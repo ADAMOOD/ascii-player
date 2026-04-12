@@ -1,16 +1,44 @@
-#include <string>
-#include <opencv2/opencv.hpp>
-using namespace std;
-
 #pragma once
+#include <opencv2/opencv.hpp>
+#include <string>
+#include <thread>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
 
 class AsciiEngine
 {
 public:
-    bool init(const std::string& videoPath, int targetWidth);
+    AsciiEngine() = default;
+    ~AsciiEngine() = default;
+
+    /**
+     * @brief Inictializace AsciiEngine pro prehravani videa jako ASCII art v terminalu.
+     * * This method opens the video file, calculates the correct height based on the target width and the aspect ratio of the original video.ion for terminal fonts, and prepares the buffer for storing ASCII characters.
+     * * @param videoPath Path to the source video (e.g. "video.mp4").
+     * @param targetWidth Default width of the ASCII art in characters.
+     * @return true If the video was successfully opened and the engine initialized.
+     * @return false If there was an error opening the video file or initializing the engine.
+     */
+    bool init(const std::string &videoPath, int targetWidth);
+
+    void frameProducerTask();
+    void play();
+
 private:
-    int width;
-    int height;
-    std::string frameBuffer;
-    cv::VideoCapture cap;
+    cv::VideoCapture m_cap;
+    std::string m_frameBuffer;
+    int m_width;
+    int m_height;
+    std::thread m_videoProcessingThread;
+    std::queue<cv::Mat> m_frames;
+    std::mutex m_queueMutex;
+
+    std::condition_variable m_frameDone;
+    std::atomic<bool> m_isRunning;
+    std::condition_variable m_frameReady;
+    std::condition_variable m_queueNotFull;
+    const size_t MAX_QUEUE_SIZE = 30;
+    const std::string m_asciiChars = " .:-=+*#%@";
 };
