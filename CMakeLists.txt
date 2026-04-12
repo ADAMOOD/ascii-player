@@ -1,28 +1,34 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.14) # FTXUI vyžaduje o něco novější CMake
 project(AsciiPlayer)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-
-# -Wall -Wextra: Compiler alerts every suspisious thing that can cause any trouble
-# -O3: Highest optimalization
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O3")
 
-# Vyhledání OpenCV
 find_package(OpenCV REQUIRED)
+
+# --- Pridani FTXUI z GitHubu ---
+include(FetchContent)
+FetchContent_Declare(ftxui
+  GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI
+  GIT_TAG main
+)
+FetchContent_MakeAvailable(ftxui)
+# -------------------------------
 
 set(SOURCES 
     src/main.cpp 
     src/AsciiEngine.cpp
 )
 
-
 add_executable(ASCII-PLAYER ${SOURCES})
 
-# 3. TVŮJ DOTAZ: Nastavení výchozí složky pro hlavičky
-# Tímto říkáme kompilátoru, ať automaticky hledá .h soubory ve složce "include"
 target_include_directories(ASCII-PLAYER PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
-# Nalinkování knihoven
-target_link_libraries(ASCII-PLAYER ${OpenCV_LIBS})
+# Musime zlinkovat nejen OpenCV, ale i tri moduly z FTXUI
+target_link_libraries(ASCII-PLAYER 
+    ${OpenCV_LIBS} 
+    ftxui::screen 
+    ftxui::dom 
+    ftxui::component
+)

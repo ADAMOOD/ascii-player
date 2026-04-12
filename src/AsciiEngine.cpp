@@ -1,7 +1,7 @@
 #include "AsciiEngine.h"
 #include <iostream>
 
-bool AsciiEngine::init(const std::string &videoPath, int targetWidth)
+bool AsciiEngine::init(const std::string &videoPath)
 {
     m_cap.open(videoPath);
     if (!m_cap.isOpened())
@@ -9,27 +9,37 @@ bool AsciiEngine::init(const std::string &videoPath, int targetWidth)
         std::cerr << "Chyba: Nelze otevrit video: " << videoPath << std::endl;
         return false;
     }
-    m_width = targetWidth;
 
     // 3. Výpočet správné výšky (korekce obdélníkového fontu v terminálu)
     double origWidth = m_cap.get(cv::CAP_PROP_FRAME_WIDTH);
     double origHeight = m_cap.get(cv::CAP_PROP_FRAME_HEIGHT);
-    double aspectRatio = origWidth / origHeight;
-
-    m_height = static_cast<int>((m_width / aspectRatio) * 0.5);
-
-    // Prealocation
-    //+1 because of /n at the end of each line
-    int totalBufferSize = (m_width + 1) * m_height;
-    m_frameBuffer.resize(totalBufferSize, ' ');
-
-    for (int y = 0; y < m_height; ++y)
-    {
-        int newlineIndex = y * (m_width + 1) + m_width;
-        m_frameBuffer[newlineIndex] = '\n';
-    }
-
+    m_aspectRatio = origWidth / origHeight;
+    m_width = 0;
+    updateTerminalSize();
     return true;
+}
+void AsciiEngine::updateTerminalSize()
+{
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    int currentTerminalWidth = w.ws_col;
+
+    if (currentTerminalWidth != m_width)
+    {
+        m_width = currentTerminalWidth;
+        m_height = static_cast<int>((m_width / m_aspectRatio) * 0.5);
+
+        // Prealocation
+        //+1 because of /n at the end of each line
+        int totalBufferSize = (m_width + 1) * m_height;
+        m_frameBuffer.resize(totalBufferSize, ' ');
+
+        for (int y = 0; y < m_height; ++y)
+        {
+            int newlineIndex = y * (m_width + 1) + m_width;
+            m_frameBuffer[newlineIndex] = '\n';
+        }
+    }
 }
 void AsciiEngine::frameProducerTask()
 {
@@ -61,6 +71,7 @@ void AsciiEngine::play()
     std::cout << "\x1b[2J";
     while (m_isRunning)
     {
+        updateTerminalSize();
         cv::Mat frame;
         { // this scope is only for the lock, so it will be released immediately after we get the frame
             std::unique_lock<std::mutex> uniqueLock(m_queueMutex);

@@ -6,6 +6,8 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 class AsciiEngine
 {
@@ -17,11 +19,10 @@ public:
      * @brief Inictializace AsciiEngine pro prehravani videa jako ASCII art v terminalu.
      * * This method opens the video file, calculates the correct height based on the target width and the aspect ratio of the original video.ion for terminal fonts, and prepares the buffer for storing ASCII characters.
      * * @param videoPath Path to the source video (e.g. "video.mp4").
-     * @param targetWidth Default width of the ASCII art in characters.
      * @return true If the video was successfully opened and the engine initialized.
      * @return false If there was an error opening the video file or initializing the engine.
      */
-    bool init(const std::string &videoPath, int targetWidth);
+    bool init(const std::string &videoPath);
 
     void frameProducerTask();
     void play();
@@ -41,4 +42,7 @@ private:
     std::condition_variable m_queueNotFull;
     const size_t MAX_QUEUE_SIZE = 30;
     const std::string m_asciiChars = " .:-=+*#%@";
+
+    double m_aspectRatio;
+    void updateTerminalSize();
 };
