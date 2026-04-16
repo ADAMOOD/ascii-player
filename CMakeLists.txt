@@ -19,6 +19,7 @@ FetchContent_MakeAvailable(ftxui)
 set(SOURCES 
     src/main.cpp 
     src/AsciiEngine.cpp
+    src/Tui.cpp
 )
 
 add_executable(ASCII-PLAYER ${SOURCES})
