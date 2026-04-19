@@ -34,24 +34,45 @@ int Tui::showMenu(const std::vector<std::string> &options, const std::string &me
 
 std::string Tui::showFileExplorer(const std::string &directory)
 {
-
-    std::vector<std::string> options = {"up"};
-    std::vector<std::string> allowedFileFormats = {".mp4",
-                                                   ".mov",
-                                                   ".avi"};
-    int i = 0;
-    for (const auto &file : std::filesystem::directory_iterator(directory))
+    //convert to absolute path and normalize it to avoid issues with relative paths and redundant path components
+    std::string currentDir = std::filesystem::absolute(directory).lexically_normal().string();
+    while (true)
     {
-        if (file.is_regular_file() && std::find(allowedFileFormats.begin(), allowedFileFormats.end(), file.path().extension()) != allowedFileFormats.end())
+        std::vector<std::string> options = {" ↑ .."};
+        for (const auto &file : std::filesystem::directory_iterator(currentDir))
         {
-            options.push_back(file.path().filename().string());
-            i++;
+            if (file.is_directory()) 
+            {
+                options.push_back(file.path().filename().string() + "/");
+            }
+            else if (file.is_regular_file() && 
+                     ConfigManager::isSupportedVideoFormat(file.path().extension().string()))
+            {
+                options.push_back(file.path().filename().string());
+            }
+        }
+
+        int choiceIndex = this->showMenu(options, "Choose a video file to convert");
+        if (choiceIndex == 0) 
+        {
+            // parent_path() returns the path to the parent directory, effectively moving us "up" one level in the directory structure
+            currentDir = std::filesystem::path(currentDir).parent_path().string();
+        }
+        else 
+        {
+            std::string selectedItem = options[choiceIndex];
+            
+            // operator / allows us to easily concatenate paths, taking care of the correct path separators for the operating system
+            std::filesystem::path fullPath = std::filesystem::path(currentDir) / selectedItem;
+
+            if (std::filesystem::is_directory(fullPath))
+            {
+                currentDir = fullPath.string(); 
+            }
+            else if (std::filesystem::is_regular_file(fullPath))
+            {
+                return fullPath.string(); 
+            }
         }
     }
-    if(i==0)
-    {
-        
-    }
-    this->showMenu(options, "Choose a video file to convert");
-    return "";
 }

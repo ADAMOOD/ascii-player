@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include "ConfigManager.h"
 
 class Tui
 {

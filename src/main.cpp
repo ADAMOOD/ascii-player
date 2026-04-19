@@ -34,6 +34,7 @@ int main()
             if(currentVideo.empty())
             {
                 currentVideo = tui.showFileExplorer("../");
+                ConfigManager::saveVideoPath(currentVideo);
             }
             break;
         }
