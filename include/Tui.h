@@ -9,15 +9,10 @@ public:
     ~Tui() = default;
 
     /**
-     * @brief Vycisti terminal a pripravi ho pro UI.
-     */
-    void init();
-
-    /**
      * @brief Zobrazi interaktivni menu a vrati index vybrane polozky.
      * @param options Seznam textu, ktere se maji v menu zobrazit.
      * @return int Index vybrane polozky.
      */
-    int showMenu(const std::vector<std::string>& options);
+    int showMenu(const std::vector<std::string> &options, const std::string &menuTitle);
     std::string showFileExplorer(const std::string& directory);
 };

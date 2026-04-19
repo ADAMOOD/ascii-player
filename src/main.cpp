@@ -1,29 +1,27 @@
-#include "AsciiEngine.h"
-#include "Tui.h"
-#include <iostream>
-#include <string>
-#include <vector>
+    #include "AsciiEngine.h"
+    #include "Tui.h"
+    #include "ConfigManager.h"
+    #include <iostream>
+    #include <string>
+    #include <vector>
 
 int main()
 {
-    // 1. Priprava dat (tady pozdeji pridas cteni slozky pres std::filesystem)
+    std::string currentVideo = ConfigManager::loadVideoPath();
+
     std::vector<std::string> mainMenu = {
         "ASCII video convertor",
-        "Optins",
-        "[ Exit ]"};
+        "Showcase",
+        "Options",
+        "[ Exit ]"
+    };
 
-    // 2. Inicializace a zobrazeni UI
     Tui tui;
-    tui.init();
+    
 
-    // Predame data primo do metody
-    int choiceIndex = tui.showMenu(mainMenu);
+    int choiceIndex = tui.showMenu(mainMenu, "ARTSCII");
 
-    // 3. Uklid po TUI
-    std::cout << "\x1b[0m\x1b[2J\x1b[H";
-
-    // 4. Vyhodnoceni volby
-    if (choiceIndex == mainMenu.size() - 1)
+    if ((size_t)choiceIndex == mainMenu.size() - 1)
     {
         std::cout << "Goodbye!\n";
         return 0;
@@ -31,14 +29,29 @@ int main()
 
     switch (choiceIndex)
     {
-    case 0:
-    {
-        tui.init();
-         break;
-    }
+        case 0:
+        {
+            if(currentVideo.empty())
+            {
+                currentVideo = tui.showFileExplorer("../");
+            }
+            break;
+        }
+        case 1:
+        {
 
-    default:
-        break;
+            
+            AsciiEngine engine;
+            if (engine.init("../assets/testEarth.mp4"))
+            {
+                engine.play();
+            }
+            else
+            {
+                std::cerr << "[CHYBA] Nepodarilo se inicializovat engine." << std::endl;
+            }
+            break;
+        }
     }
 
     return 0;
