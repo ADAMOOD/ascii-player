@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
-#include "ConfigManager.h"
+#include "core/ConfigManager.h"
 
 class Tui
 {
@@ -16,4 +16,5 @@ public:
      */
     int showMenu(const std::vector<std::string> &options, const std::string &menuTitle);
     std::string showFileExplorer(const std::string& directory);
+    void showOptionsMenu();
 };

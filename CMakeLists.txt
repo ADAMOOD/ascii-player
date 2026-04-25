@@ -18,12 +18,15 @@ FetchContent_MakeAvailable(ftxui)
 
 set(SOURCES 
     src/main.cpp 
-    src/AsciiEngine.cpp
-    src/Tui.cpp
+    src/core/AsciiEngine.cpp
+    src/ui/Tui.cpp
+    src/strategies/BaseGrayscaleStrategy.cpp
 )
 
+# add_executable teď vezme jen ten seznam SOURCES a nic víc
 add_executable(ASCII-PLAYER ${SOURCES})
 
+# Tohle zůstává stejné, tvoří to ten "kořen" pro tvé includy
 target_include_directories(ASCII-PLAYER PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
 # Musime zlinkovat nejen OpenCV, ale i tri moduly z FTXUI

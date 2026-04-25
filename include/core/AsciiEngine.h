@@ -6,8 +6,12 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
+#include <memory>
 #include <sys/ioctl.h>
 #include <unistd.h>
+
+#include "strategies/IRenderStrategy.h"
+
 
 class AsciiEngine
 {
@@ -41,8 +45,18 @@ private:
     std::condition_variable m_frameReady;
     std::condition_variable m_queueNotFull;
     const size_t MAX_QUEUE_SIZE = 30;
-    const std::string m_asciiChars = " .:-=+*#%@";
 
+    // Smart pointer ensuring EXCLUSIVE ownership of the rendering strategy.
+    // Automatically calls 'delete' when AsciiEngine is destroyed or when the strategy changes.
+    // Guarantees zero memory leaks without manual memory management.
+    std::unique_ptr<IRenderStrategy> m_currentStrategy;
     double m_aspectRatio;
+
     void updateTerminalSize();
+    cv::Mat fetchFrameFromQueue();
+    void processFrameToBuffer(const cv::Mat &frame);
+    void renderBuffer();
+    void syncFramerate();
+    void checkUserInput();
+    void setStrategy(std::unique_ptr<IRenderStrategy> newStrategy);
 };

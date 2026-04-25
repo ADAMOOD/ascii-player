@@ -1,9 +1,9 @@
-    #include "AsciiEngine.h"
-    #include "Tui.h"
-    #include "ConfigManager.h"
-    #include <iostream>
-    #include <string>
-    #include <vector>
+#include "core/AsciiEngine.h"
+#include "ui/Tui.h"
+#include "core/ConfigManager.h"
+#include <iostream>
+#include <string>
+#include <vector>
 
 int main()
 {
@@ -11,47 +11,46 @@ int main()
 
     std::vector<std::string> mainMenu = {
         "ASCII video convertor",
-        "Showcase",
         "Options",
-        "[ Exit ]"
-    };
+        "[ Exit ]"};
 
     Tui tui;
-    
-
-    int choiceIndex = tui.showMenu(mainMenu, "ARTSCII");
-
-    if ((size_t)choiceIndex == mainMenu.size() - 1)
+    while (true)
     {
-        std::cout << "Goodbye!\n";
-        return 0;
-    }
+        int choiceIndex = tui.showMenu(mainMenu, "ARTSCII");
 
-    switch (choiceIndex)
-    {
+        if ((size_t)choiceIndex == mainMenu.size() - 1)
+        {
+            std::cout << "Goodbye!\n";
+            return 0;
+        }
+
+        switch (choiceIndex)
+        {
         case 0:
         {
-            if(currentVideo.empty())
+            if (currentVideo.empty())
             {
                 currentVideo = tui.showFileExplorer("../");
                 ConfigManager::saveVideoPath(currentVideo);
             }
-            break;
-        }
-        case 1:
-        {
-
-            
             AsciiEngine engine;
-            if (engine.init("../assets/testEarth.mp4"))
+        
+            if (engine.init(currentVideo))
             {
                 engine.play();
             }
             else
             {
-                std::cerr << "[CHYBA] Nepodarilo se inicializovat engine." << std::endl;
+                std::cerr << "[ERR] " << std::endl;
             }
             break;
+        }
+        case 1:
+        {
+            tui.showOptionsMenu();
+            break;
+        }
         }
     }
 
