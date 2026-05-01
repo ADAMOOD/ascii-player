@@ -3,11 +3,13 @@
 #include <vector>
 #include "NaiveGrayscaleStrategy.h"
 #include "PerceptualGrayscaleStrategy.h"
+#include "LightnessGrayscaleStrategy.h"
+#include "ValueGrayscaleStrategy.h"
 
 class StrategiesFactory
 {
 private:
-    inline static const std::vector<std::string> _strategies = {"Naive Grayscale", "Perceptual Grayscale"};
+    inline static const std::vector<std::string> _strategies = {"Naive Grayscale", "Perceptual Grayscale", "Lightness Grayscale", "Value Grayscale"};
 
 public:
     static const std::vector<std::string> getAvailableStrategies()
@@ -24,7 +26,16 @@ public:
         {
             return std::make_unique<PerceptualGrayscaleStrategy>();
         }
-        
+        if (selecctedStrategy == _strategies[2])
+        {
+            return std::make_unique<LightnessGrayscaleStrategy>();
+        }
+        if(selecctedStrategy == _strategies[3])
+        {
+            return std::make_unique<ValueGrayscaleStrategy>();
+        }
+
+
         return std::make_unique<PerceptualGrayscaleStrategy>();
     }
 };

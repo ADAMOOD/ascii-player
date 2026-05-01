@@ -58,5 +58,5 @@ private:
     void renderBuffer();
     void syncFramerate();
     void checkUserInput();
-    void setStrategy(std::unique_ptr<IRenderStrategy> newStrategy);
+    void setStrategy(std::string newStrategy);
 };

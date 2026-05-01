@@ -2,6 +2,8 @@
 #include <iostream>
 #include "strategies/PerceptualGrayscaleStrategy.h"
 #include "strategies/NaiveGrayscaleStrategy.h"
+#include "core/ConfigManager.h"
+#include "strategies/StrategiesFactory.h"
 
 bool AsciiEngine::init(const std::string &videoPath)
 {
@@ -11,10 +13,8 @@ bool AsciiEngine::init(const std::string &videoPath)
         std::cerr << "Chyba: Nelze otevrit video: " << videoPath << std::endl;
         return false;
     }
-    // TODO reading config for strategy
-    //  std::make_unique safely allocates the GrayscaleStrategy on the heap
-    // and immediately wraps it in a unique_ptr to ensure memory safety from day one.
-    this->setStrategy(std::make_unique<NaiveGrayscaleStrategy>());
+    auto strategy = ConfigManager::getValFromSettings("render_strategy");
+    this->setStrategy(strategy);
     double origWidth = m_cap.get(cv::CAP_PROP_FRAME_WIDTH);
     double origHeight = m_cap.get(cv::CAP_PROP_FRAME_HEIGHT);
     m_aspectRatio = origWidth / origHeight;
@@ -126,11 +126,11 @@ cv::Mat AsciiEngine::fetchFrameFromQueue()
 
     return frame;
 }
-void AsciiEngine::setStrategy(std::unique_ptr<IRenderStrategy> newStrategy)
+void AsciiEngine::setStrategy(std::string newStrategy)
 {
     // unique_ptr cannot be copied (to prevent double-free crashes).
     // std::move explicitly transfers ownership from 'newStrategy' to 'm_currentStrategy'.
-    m_currentStrategy = std::move(newStrategy);
+    m_currentStrategy = std::move(StrategiesFactory::createStrategy(newStrategy));
 }
 void AsciiEngine::processFrameToBuffer(const cv::Mat &frame)
 {
