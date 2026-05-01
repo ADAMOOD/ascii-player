@@ -21,6 +21,7 @@ set(SOURCES
     src/core/AsciiEngine.cpp
     src/ui/Tui.cpp
     src/strategies/BaseGrayscaleStrategy.cpp
+    src/ui/SettingsScreen.cpp
 )
 
 # add_executable teď vezme jen ten seznam SOURCES a nic víc

@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include "core/ConfigManager.h"
+#include "strategies/StrategiesFactory.h"
 
 class Tui
 {

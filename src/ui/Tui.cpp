@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include "ui/SettingsScreen.h"
 
 // FTXUI Headers
 #include <ftxui/component/component.hpp>
@@ -77,48 +78,6 @@ std::string Tui::showFileExplorer(const std::string &directory)
 }
 void Tui::showOptionsMenu()
 {
-    using namespace ftxui;
-    auto screen = ScreenInteractive::Fullscreen();
-
-    std::string videoPath = ConfigManager::loadVideoPath();
-    std::string targetFps = "30";
-    int selectedIndex = 0;
-    std::vector<std::string> menuEntries = {"Save settings", "Back to main menu"};
-
-    MenuOption menuOption;
-    menuOption.on_enter = screen.ExitLoopClosure();
-
-    // Vytvoření jednotlivých komponent
-    Component inputIP = Input(&videoPath, "please select a video file");
-    Component inputUser = Input(&targetFps, "please enter target FPS");
-    // 2. NEZAPOMEŇ PŘEDAT menuOption!
-    Component menuButtons = Menu(&menuEntries, &selectedIndex, menuOption);
-
-    // Sestavení do vertikálního kontejneru
-    auto container = Container::Vertical({
-        inputIP,
-        inputUser,
-        menuButtons,
-    });
-
-    // Renderer pro definici vzhledu
-    auto renderer = Renderer(container, [&]
-                             { return window(text(" Settings ") | bold | center,
-                                             vbox({
-                                                 hbox(text(" Video:  "), inputIP->Render()),
-                                                 hbox(text(" FPS:    "), inputUser->Render()),
-                                                 separator(),
-                                                 menuButtons->Render(),
-                                             })) |
-                                      center; });
-
-    screen.Loop(renderer);
-
-    // 4. SEM SE PROGRAM DOSTANE AŽ PO STISKNUTÍ ENTERU NAD NĚJAKÝM TLAČÍTKEM
-    if (selectedIndex == 0) // Uživatel klikl na "Save settings"
-    {
-        ConfigManager::saveVideoPath(videoPath);
-        // Sem pak můžeš přidat ukládání FPS atd.
-    }
-    return;
+    SettingsScreen screen;
+    screen.show();
 }
