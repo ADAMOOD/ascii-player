@@ -20,3 +20,4 @@ void BaseGrayscaleStrategy::render(const cv::Mat& inputFrame, std::string& outBu
         }
     }
 }
+

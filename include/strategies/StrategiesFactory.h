@@ -5,11 +5,12 @@
 #include "PerceptualGrayscaleStrategy.h"
 #include "LightnessGrayscaleStrategy.h"
 #include "ValueGrayscaleStrategy.h"
+#include "SobelEdgeDetectionStrategy.h"
 
 class StrategiesFactory
 {
 private:
-    inline static const std::vector<std::string> _strategies = {"Naive Grayscale", "Perceptual Grayscale", "Lightness Grayscale", "Value Grayscale"};
+    inline static const std::vector<std::string> _strategies = {"Naive Grayscale", "Perceptual Grayscale", "Lightness Grayscale", "Value Grayscale","Edge Detection (Sobel)"};
 
 public:
     static const std::vector<std::string> getAvailableStrategies()
@@ -33,6 +34,10 @@ public:
         if(selecctedStrategy == _strategies[3])
         {
             return std::make_unique<ValueGrayscaleStrategy>();
+        }
+        if(selecctedStrategy == _strategies[4])
+        {
+            return std::make_unique<SobelEdgeDetectionStrategy>();
         }
 
 

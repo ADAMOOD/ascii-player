@@ -7,8 +7,6 @@
 
 int main()
 {
-    std::string currentVideo = ConfigManager::loadVideoPath();
-
     std::vector<std::string> mainMenu = {
         "ASCII video convertor",
         "Options",
@@ -29,13 +27,14 @@ int main()
         {
         case 0:
         {
+            std::string currentVideo = ConfigManager::loadVideoPath();
             if (currentVideo.empty())
             {
                 currentVideo = tui.showFileExplorer("../");
                 ConfigManager::saveVideoPath(currentVideo);
             }
             AsciiEngine engine;
-        
+
             if (engine.init(currentVideo))
             {
                 engine.play();
