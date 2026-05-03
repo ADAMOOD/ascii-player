@@ -1,5 +1,5 @@
 #pragma once
-#include "IRenderStrategy.h"
+#include "../IRenderStrategy.h"
 
 class BaseGrayscaleStrategy : public IRenderStrategy {
 private:

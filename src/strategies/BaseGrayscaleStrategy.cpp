@@ -1,4 +1,4 @@
-#include "strategies/BaseGrayscaleStrategy.h"
+#include "strategies/Grayscale/BaseGrayscaleStrategy.h"
 
 void BaseGrayscaleStrategy::render(const cv::Mat& inputFrame, std::string& outBuffer, int width, int height)
 {

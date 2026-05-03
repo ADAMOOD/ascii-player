@@ -1,9 +1,32 @@
 #include "core/AsciiEngine.h"
 #include <iostream>
-#include "strategies/PerceptualGrayscaleStrategy.h"
-#include "strategies/NaiveGrayscaleStrategy.h"
+#include <termios.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include "core/ConfigManager.h"
 #include "strategies/StrategiesFactory.h"
+
+void enableRawMode()
+{
+    struct termios term;
+    tcgetattr(STDIN_FILENO, &term);
+
+    term.c_lflag &= ~(ICANON | ECHO);
+
+    // Nové nastavení pro absolutně neblokující čtení (funguje 100% i ve WSL)
+    term.c_cc[VMIN] = 0;  // Nečekej na žádný minimální počet znaků
+    term.c_cc[VTIME] = 0; // Časový limit čekání je 0
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &term);
+}
+
+void disableRawMode()
+{
+    struct termios term;
+    tcgetattr(STDIN_FILENO, &term);
+    term.c_lflag |= (ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &term);
+}
 
 bool AsciiEngine::init(const std::string &videoPath)
 {
@@ -78,6 +101,7 @@ void AsciiEngine::frameProducerTask()
 }
 void AsciiEngine::play()
 {
+    enableRawMode();
     m_isRunning = true;
     // Start the background thread
     m_videoProcessingThread = std::thread(&AsciiEngine::frameProducerTask, this);
@@ -98,13 +122,22 @@ void AsciiEngine::play()
 
         syncFramerate();
 
-        // checkUserInput();
+        checkUserInput();
     }
-
+    disableRawMode();
     if (m_videoProcessingThread.joinable())
     {
         m_videoProcessingThread.join();
     }
+
+    // clear the frame queue to free memory
+    std::unique_lock<std::mutex> lock(m_queueMutex);
+    while (!m_frames.empty())
+    {
+        m_frames.pop();
+    }
+    lock.unlock();
+
     std::cout << "\x1b[?25h";
 }
 cv::Mat AsciiEngine::fetchFrameFromQueue()
@@ -141,27 +174,31 @@ void AsciiEngine::processFrameToBuffer(const cv::Mat &frame)
 }
 void AsciiEngine::renderBuffer()
 {
-    std::cout << "\x1b[H" << m_frameBuffer;
+    std::cout << "\x1b[H" << m_frameBuffer << std::flush; // flush is important to force the output to be printed immediately, otherwise it might be buffered and cause lag
 }
 
 void AsciiEngine::syncFramerate()
 {
     // TODO
-
     std::this_thread::sleep_for(std::chrono::milliseconds(33));
 }
 void AsciiEngine::checkUserInput()
 {
-    // TODO
-
-    if (std::cin.peek() != EOF)
+    char c;
+    // Funkce read zkusí přečíst 1 bajt ze standardního vstupu (0).
+    // Protože jsme v O_NONBLOCK režimu, pokud není klávesa stisknutá,
+    // read okamžitě vrátí -1 a program jede plynule dál.
+    // Pokud je klávesa stisknutá, vrátí 1 a znak se uloží do proměnné 'c'.
+    if (read(STDIN_FILENO, &c, 1) == 1)
     {
-        char c;
-        std::cin.get(c);
         if (c == 'q' || c == 'Q')
         {
             m_isRunning = false;
             m_frameReady.notify_one();
+            m_queueNotFull.notify_one();
         }
+
+        // TADY PAK PŘIDÁŠ:
+        // else if (m_currentStrategy) { m_currentStrategy->onKeyPress(c); }
     }
 }

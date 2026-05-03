@@ -59,4 +59,6 @@ private:
     void syncFramerate();
     void checkUserInput();
     void setStrategy(std::string newStrategy);
+
+
 };
