@@ -9,6 +9,7 @@ public:
 
     // nessesary
     virtual ~IRenderStrategy() = default;
+    virtual void onKeyPress(char key) {}
 
 protected:
     uchar calculateAverage(cv::Vec3b chanels)

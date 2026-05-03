@@ -42,25 +42,7 @@ public:
                 if (angle < 0)
                     angle += 180;
 
-                if (angle > 22.5 && angle <= 67.5)
-                {
-                    outBuffer[bufferIndex] = '\\';
-                    continue;
-                }
-                else if (angle > 67.5 && angle <= 112.5)
-                {
-                    outBuffer[bufferIndex] = '-';
-                    continue;
-                }
-                if (angle > 112.5 && angle <= 157.5)
-                {
-                    outBuffer[bufferIndex] = '/';
-                    continue;
-                }
-                else{
-                    outBuffer[bufferIndex] = '|';
-                    continue;
-                }
+                outBuffer[bufferIndex] = getAsciiForAngle(angle);
             }
         }
     }

@@ -6,6 +6,25 @@ class BaseEdgeDetectionStrategy : public IRenderStrategy
 private:
     /* data */
 protected:
+    char getAsciiForAngle(float angle)
+    {
+        if (angle > 22.5 && angle <= 67.5)
+        {
+            return '\\';
+        }
+        else if (angle > 67.5 && angle <= 112.5)
+        {
+            return '-';
+        }
+        if (angle > 112.5 && angle <= 157.5)
+        {
+            return '/';
+        }
+        else
+        {
+            return '|';
+        }
+    }
     void computeSobelData(const cv::Mat &resizedFrame, cv::Mat &magnitudes, cv::Mat &angles, int width, int height)
     {
         const cv::Matx33f Gx(-1, 0, 1, -2, 0, 2, -1, 0, 1);

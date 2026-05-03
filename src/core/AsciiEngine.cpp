@@ -198,7 +198,9 @@ void AsciiEngine::checkUserInput()
             m_queueNotFull.notify_one();
         }
 
-        // TADY PAK PŘIDÁŠ:
-        // else if (m_currentStrategy) { m_currentStrategy->onKeyPress(c); }
+        else if (m_currentStrategy)
+        {
+            m_currentStrategy->onKeyPress(c);
+        }
     }
 }
