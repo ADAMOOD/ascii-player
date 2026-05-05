@@ -1,4 +1,5 @@
 #pragma once
+#include <opencv2/opencv.hpp>
 #include "../IRenderStrategy.h"
 
 class BaseEdgeDetectionStrategy : public IRenderStrategy
@@ -6,17 +7,98 @@ class BaseEdgeDetectionStrategy : public IRenderStrategy
 private:
     /* data */
 protected:
+    void convertToGrayscale(const cv::Mat &src, cv::Mat &dst, int width, int height)
+    {
+        for (int y = 0; y < height; y++)
+        {
+            const cv::Vec3b *srcRow = src.ptr<cv::Vec3b>(y);
+            uchar *dstRow = dst.ptr<uchar>(y);
+
+            for (int x = 0; x < width; x++)
+            {
+                // Tady přečteš barvy přímo z pointeru
+                uchar b = srcRow[x][0];
+                uchar g = srcRow[x][1];
+                uchar r = srcRow[x][2];
+
+                uchar gray = static_cast<uchar>(0.299 * r + 0.587 * g + 0.114 * b);
+
+                //direct save to dst
+                dstRow[x] = gray;
+            }
+        }
+    }
+void applyFilter(const cv::Mat &src, cv::Mat &dst, const cv::Mat &kernel, int width, int height)
+    {
+        const float sum = cv::sum(kernel)[0];
+        int halfSize = kernel.rows / 2;
+        
+        for (int i = halfSize; i < height - halfSize; i++)
+        {
+            for (int j = halfSize; j < width - halfSize; j++)
+            {
+                float blurredPixelValue = 0;
+                for (int k = -halfSize; k <= halfSize; k++)
+                {
+                    for (int l = -halfSize; l <= halfSize; l++)
+                    {
+                        blurredPixelValue += src.at<uchar>(i + k, j + l) * kernel.at<float>(k + halfSize, l + halfSize);
+                    }
+                }
+                blurredPixelValue /= sum;
+                if (blurredPixelValue > 255.0f)
+                    blurredPixelValue = 255.0f;
+                dst.at<uchar>(i, j) = static_cast<uchar>(blurredPixelValue);
+            }
+        }
+    }
+    void applyNonMaximumSuppression(const cv::Mat &magnitudes, const cv::Mat &angles, cv::Mat &dst, int width, int height)
+    {
+        for (int y = 1; y < height - 1; y++)
+        {
+            for (int x = 1; x < width - 1; x++)
+            {
+                float mag = magnitudes.at<float>(y, x);
+                float angle = angles.at<float>(y, x);
+                float neighbor1 = 0, neighbor2 = 0;
+                if ((angle >= 0 && angle < 22.5) || (angle >= 157.5 && angle <= 180))
+                {
+                    neighbor1 = magnitudes.at<float>(y, x + 1);
+                    neighbor2 = magnitudes.at<float>(y, x - 1);
+                }
+                else if (angle >= 22.5 && angle < 67.5)
+                {
+                    neighbor1 = magnitudes.at<float>(y + 1, x - 1);
+                    neighbor2 = magnitudes.at<float>(y - 1, x + 1);
+                }
+                else if (angle >= 67.5 && angle < 112.5)
+                {
+                    neighbor1 = magnitudes.at<float>(y + 1, x);
+                    neighbor2 = magnitudes.at<float>(y - 1, x);
+                }
+                else if (angle >= 112.5 && angle < 157.5)
+                {
+                    neighbor1 = magnitudes.at<float>(y - 1, x - 1);
+                    neighbor2 = magnitudes.at<float>(y + 1, x + 1);
+                }
+                if (mag >= neighbor1 && mag >= neighbor2)
+                {
+                    dst.at<float>(y, x) = mag;
+                }
+            }
+        }
+    }
     char getAsciiForAngle(float angle)
     {
-        if (angle > 22.5 && angle <= 67.5)
+        if (angle > 22.5f && angle <= 67.5f)
         {
             return '\\';
         }
-        else if (angle > 67.5 && angle <= 112.5)
+        else if (angle > 67.5f && angle <= 112.5f)
         {
             return '-';
         }
-        if (angle > 112.5 && angle <= 157.5)
+        if (angle > 112.5f && angle <= 157.5f)
         {
             return '/';
         }
@@ -42,8 +124,7 @@ protected:
                 {
                     for (int i = -1; i <= 1; i++)
                     {
-                        cv::Vec3b pixel = resizedFrame.at<cv::Vec3b>(y + j, x + i);
-                        uchar average = calculateAverage(pixel);
+                        uchar average = resizedFrame.at<uchar>(y + j, x + i);
                         sumX += average * Gx(j + 1, i + 1);
                         sumY += average * Gy(j + 1, i + 1);
                     }

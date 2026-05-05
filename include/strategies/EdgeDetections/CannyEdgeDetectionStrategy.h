@@ -5,6 +5,11 @@ class CannyEdgeDetectionStrategy : public BaseEdgeDetectionStrategy
 {
 private:
     bool m_useHysteresis = false;
+    const cv::Mat kernel5x5 = (cv::Mat_<float>(5, 5) << 1, 4, 7, 4, 1,
+                               4, 16, 26, 16, 4,
+                               7, 26, 41, 26, 7,
+                               4, 16, 26, 16, 4,
+                               1, 4, 7, 4, 1);
 
 public:
     void onKeyPress(char key) override
@@ -19,85 +24,63 @@ public:
         cv::Mat resizedFrame;
         cv::resize(inputFrame, resizedFrame, cv::Size(width, height));
 
-        // initializacion
+        cv::Mat grayFrame = cv::Mat::zeros(height, width, CV_8UC1);
+        convertToGrayscale(resizedFrame, grayFrame, width, height);
+
+        cv::Mat blurredFrame = cv::Mat::zeros(height, width, CV_8UC1);
+        applyFilter(grayFrame, blurredFrame, kernel5x5, width, height);
+
         cv::Mat magnitudes = cv::Mat::zeros(height, width, CV_32F);
         cv::Mat angles = cv::Mat::zeros(height, width, CV_32F);
+        computeSobelData(blurredFrame, magnitudes, angles, width, height);
 
-        computeSobelData(resizedFrame, magnitudes, angles, width, height);
+        cv::Mat nmsMagnitudes = cv::Mat::zeros(height, width, CV_32F);
+        applyNonMaximumSuppression(magnitudes, angles, nmsMagnitudes, width, height);
 
-        cv::Mat nmsMagnitudes = cv::Mat::zeros(height, width, CV_32F); // Non-Maximum Suppression - NMS
-
-        for (int y = 1; y < height - 1; y++) // cycles have to start from 1 and end before the edge, and end before the edge, because we are going to compare with neighbors
+        for (int y = 0; y < height; y++)
         {
-            for (int x = 1; x < width - 1; x++)
+            for (int x = 0; x < width; x++)
             {
-                float mag = magnitudes.at<float>(y, x);
-                float angle = angles.at<float>(y, x);
-                float neighbor1 = 0, neighbor2 = 0;
-
-                if (angle >= 0 && angle < 22.5 || angle >= 157.5 && angle <= 180)
-                {
-                    neighbor1 = magnitudes.at<float>(y, x + 1);
-                    neighbor2 = magnitudes.at<float>(y, x - 1);
-                }
-                else if (angle >= 22.5 && angle < 67.5)
-                {
-                    neighbor1 = magnitudes.at<float>(y + 1, x - 1);
-                    neighbor2 = magnitudes.at<float>(y - 1, x + 1);
-                }
-                else if (angle >= 67.5 && angle < 112.5)
-                {
-                    neighbor1 = magnitudes.at<float>(y + 1, x);
-                    neighbor2 = magnitudes.at<float>(y - 1, x);
-                }
-                else if (angle >= 112.5 && angle < 157.5)
-                {
-                    neighbor1 = magnitudes.at<float>(y - 1, x - 1);
-                    neighbor2 = magnitudes.at<float>(y + 1, x + 1);
-                }
-
                 int bufferIndex = y * (width + 1) + x;
 
-                if (mag >= neighbor1 && mag >= neighbor2)
-                {
-                    nmsMagnitudes.at<float>(y, x) = mag;
+                int deadZone = (kernel5x5.rows / 2) + 1;
 
-                    // Rychlá cesta pro vypnutou Hysterezi (rovnou kreslíme)
-                    if (!m_useHysteresis && mag >= 50)
+                // A všechny ty falešné hrany natvrdo smažeme!
+                if (x < deadZone || y < deadZone || x >= width - deadZone || y >= height - deadZone)
+                {
+                    outBuffer[bufferIndex] = ' ';
+                    continue;
+                }
+
+                // Pokud nejsme na okraji, načteme data
+                float mag = nmsMagnitudes.at<float>(y, x);
+                float angle = angles.at<float>(y, x);
+
+                // 2. Vykreslení podle aktuálního režimu
+                if (!m_useHysteresis)
+                {
+                    // --- Režim A: Bez hystereze (Klasický Canny/Sobel) ---
+                    if (mag >= 50.0f)
                     {
-                        outBuffer[bufferIndex] = getAsciiForAngle(angle);
+                        outBuffer[bufferIndex] = getAsciiForAngle(angle); // Nebo znak '#', jak jsi měl
                     }
-                    else if (!m_useHysteresis)
+                    else
                     {
                         outBuffer[bufferIndex] = ' ';
                     }
                 }
-                else if (!m_useHysteresis)
+                else
                 {
-                    outBuffer[bufferIndex] = ' ';
-                }
-            }
-        }
+                    // --- Režim B: S hysterezí ---
+                    float highThreshold = 100.0f;
+                    float lowThreshold = 30.0f;
 
-        // A pak teprve Hysterezní (3.) cyklus
-        if (m_useHysteresis)
-        {
-            float highThreshold = 100.0f; // Edge is certain if above this
-            float lowThreshold = 30.0f;   // noise if below this, edge if between low and high and connected to strong edge
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    int bufferIndex = y * (width + 1) + x;
-                    float mag = nmsMagnitudes.at<float>(y, x);
-                    float angle = angles.at<float>(y, x);
-                    if(mag >= highThreshold)
+                    if (mag >= highThreshold)
                     {
                         outBuffer[bufferIndex] = getAsciiForAngle(angle);
                     }
                     else if (mag >= lowThreshold)
                     {
-                        // Check 8-connected neighbors for a strong edge
                         bool connectedToStrongEdge = false;
                         for (int j = -1; j <= 1; j++)
                         {
@@ -105,20 +88,22 @@ public:
                             {
                                 if (j == 0 && i == 0)
                                     continue;
+
                                 int neighborY = y + j;
                                 int neighborX = x + i;
-                                if (neighborY >= 0 && neighborY < height && neighborX >= 0 && neighborX < width)
+
+                                // Tady už nemusíme kontrolovat meze (neighborY >= 0),
+                                // protože okraje obrazu jsme vyloučili v kroku 1!
+                                if (nmsMagnitudes.at<float>(neighborY, neighborX) >= highThreshold)
                                 {
-                                    if (nmsMagnitudes.at<float>(neighborY, neighborX) >= highThreshold)
-                                    {
-                                        connectedToStrongEdge = true;
-                                        break;
-                                    }
+                                    connectedToStrongEdge = true;
+                                    break;
                                 }
                             }
                             if (connectedToStrongEdge)
                                 break;
                         }
+
                         if (connectedToStrongEdge)
                         {
                             outBuffer[bufferIndex] = getAsciiForAngle(angle);
