@@ -37,6 +37,13 @@ public:
         cv::Mat nmsMagnitudes = cv::Mat::zeros(height, width, CV_32F);
         applyNonMaximumSuppression(magnitudes, angles, nmsMagnitudes, width, height);
 
+        if (m_useHysteresis)
+        {
+            cv::Mat hysteresisResult = cv::Mat::zeros(height, width, CV_32F);
+            applyHysteresis(nmsMagnitudes, hysteresisResult, width, height, 30.0f, 100.0f);
+            nmsMagnitudes = hysteresisResult;
+        }
+
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
@@ -56,67 +63,14 @@ public:
                 float mag = nmsMagnitudes.at<float>(y, x);
                 float angle = angles.at<float>(y, x);
 
-                // 2. Vykreslení podle aktuálního režimu
-                if (!m_useHysteresis)
+                // --- Režim A: Bez hystereze (Klasický Canny/Sobel) ---
+                if (mag >= 50.0f)
                 {
-                    // --- Režim A: Bez hystereze (Klasický Canny/Sobel) ---
-                    if (mag >= 50.0f)
-                    {
-                        outBuffer[bufferIndex] = getAsciiForAngle(angle); // Nebo znak '#', jak jsi měl
-                    }
-                    else
-                    {
-                        outBuffer[bufferIndex] = ' ';
-                    }
+                    outBuffer[bufferIndex] = getAsciiForAngle(angle); // Nebo znak '#', jak jsi měl
                 }
                 else
                 {
-                    // --- Režim B: S hysterezí ---
-                    float highThreshold = 100.0f;
-                    float lowThreshold = 30.0f;
-
-                    if (mag >= highThreshold)
-                    {
-                        outBuffer[bufferIndex] = getAsciiForAngle(angle);
-                    }
-                    else if (mag >= lowThreshold)
-                    {
-                        bool connectedToStrongEdge = false;
-                        for (int j = -1; j <= 1; j++)
-                        {
-                            for (int i = -1; i <= 1; i++)
-                            {
-                                if (j == 0 && i == 0)
-                                    continue;
-
-                                int neighborY = y + j;
-                                int neighborX = x + i;
-
-                                // Tady už nemusíme kontrolovat meze (neighborY >= 0),
-                                // protože okraje obrazu jsme vyloučili v kroku 1!
-                                if (nmsMagnitudes.at<float>(neighborY, neighborX) >= highThreshold)
-                                {
-                                    connectedToStrongEdge = true;
-                                    break;
-                                }
-                            }
-                            if (connectedToStrongEdge)
-                                break;
-                        }
-
-                        if (connectedToStrongEdge)
-                        {
-                            outBuffer[bufferIndex] = getAsciiForAngle(angle);
-                        }
-                        else
-                        {
-                            outBuffer[bufferIndex] = ' ';
-                        }
-                    }
-                    else
-                    {
-                        outBuffer[bufferIndex] = ' ';
-                    }
+                    outBuffer[bufferIndex] = ' ';
                 }
             }
         }
