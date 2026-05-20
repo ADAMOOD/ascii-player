@@ -1,9 +1,11 @@
 #pragma once
 #include "BaseEdgeDetectionStrategy.h"
+#include "CannyEdgeDetectionStrategy.h"
 
-class CannyEdgeDetectionStrategy : public BaseEdgeDetectionStrategy
+class ComicEdgeDetectionStrategy : public BaseEdgeDetectionStrategy
 {
 private:
+    std::string m_asciiChars = " .:-=+*#%@";
     bool m_useHysteresis = false;
     const cv::Mat kernel5x5 = (cv::Mat_<float>(5, 5) << 1, 4, 7, 4, 1,
                                4, 16, 26, 16, 4,
@@ -11,7 +13,72 @@ private:
                                4, 16, 26, 16, 4,
                                1, 4, 7, 4, 1);
 
+    uchar getShadingChar(uchar brightness)
+    {
+        return m_asciiChars[(brightness * (m_asciiChars.length() - 1)) / 255];
+    }
+    uchar getSmartEdgeChar(int x, int y, const cv::Mat &angles, const cv::Mat &finalEdges)
+    {
+        float angle = angles.at<float>(y, x);
+        char pixelChar = getAsciiForAngle(angle);
+
+        int ny1 = 0, nx1 = 0;
+        int ny2 = 0, nx2 = 0;
+        switch (pixelChar)
+        {
+        case '-':
+        {
+            ny1 = y;
+            nx1 = x - 1;
+            ny2 = y;
+            nx2 = x + 1;
+            break;
+        }
+
+        case '/':
+        {
+            ny1 = y + 1;
+            nx1 = x - 1;
+            ny2 = y - 1;
+            nx2 = x + 1;
+            break;
+        }
+        case '\\':
+        {
+            ny1 = y - 1;
+            nx1 = x - 1;
+            ny2 = y + 1;
+            nx2 = x + 1;
+            break;
+        }
+        case '|':
+        {
+            ny1 = y - 1;
+            nx1 = x;
+            ny2 = y + 1;
+            nx2 = x;
+            break;
+        }
+        }
+        bool neighbour1Ok = (finalEdges.at<float>(ny1, nx1) == 255.0f) && (getAsciiForAngle(angles.at<float>(ny1, nx1)) == pixelChar);
+        bool neighbour2Ok = (finalEdges.at<float>(ny2, nx2) == 255.0f) && (getAsciiForAngle(angles.at<float>(ny2, nx2)) == pixelChar);
+
+        if (neighbour1Ok && neighbour2Ok)
+        {
+            return pixelChar;
+        }
+        else
+        {
+            // TODO handle different angle changes
+            return '+'; // Je to detail/roh, kreslím malý spojovací znak.
+        }
+    }
+
 public:
+    ComicEdgeDetectionStrategy(int kernelSize, float edgeTreashold)
+    {
+        //TODO allow user to configure image analysing properties
+    }
     void onKeyPress(char key) override
     {
         if (key == 'h' || key == 'H')
@@ -52,26 +119,27 @@ public:
 
                 int deadZone = (kernel5x5.rows / 2) + 1;
 
-
+                // deadZone check to prevent out of bounds
+                // becose method apply filter aplyes filter only on notPheripheral pixels it creates frame so we have to skip it
                 if (x < deadZone || y < deadZone || x >= width - deadZone || y >= height - deadZone)
                 {
                     outBuffer[bufferIndex] = ' ';
                     continue;
                 }
 
-                // Pokud nejsme na okraji, načteme data
                 float mag = nmsMagnitudes.at<float>(y, x);
                 float angle = angles.at<float>(y, x);
 
-                if (mag >= 50.0f)
+                if (mag == 255.0f)
                 {
-                    outBuffer[bufferIndex] = getAsciiForAngle(angle);
+                    outBuffer[bufferIndex] = getSmartEdgeChar(x, y, angles, nmsMagnitudes);
                 }
                 else
                 {
-                    outBuffer[bufferIndex] = ' ';
+                    outBuffer[bufferIndex] = getShadingChar(grayFrame.at<uchar>(y, x));
                 }
             }
         }
     }
 };
+
