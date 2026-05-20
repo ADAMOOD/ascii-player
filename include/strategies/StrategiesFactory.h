@@ -7,16 +7,18 @@
 #include "Grayscale/ValueGrayscaleStrategy.h"
 #include "EdgeDetections/SobelEdgeDetectionStrategy.h"
 #include "EdgeDetections/CannyEdgeDetectionStrategy.h"
+#include "EdgeDetections/ComicEdgeDetectionStrategy.h"
 
 class StrategiesFactory
 {
 private:
     inline static const std::vector<std::string> _strategies = {"Naive Grayscale",
-         "Perceptual Grayscale",
-          "Lightness Grayscale",
-           "Value Grayscale",
-           "Edge Detection (Sobel)",
-           "Edge Detection (Canny)"};
+                                                                "Perceptual Grayscale",
+                                                                "Lightness Grayscale",
+                                                                "Value Grayscale",
+                                                                "Edge Detection (Sobel)",
+                                                                "Edge Detection (Canny)",
+                                                                "Edge/Grayscale (Comic)"};
 
 public:
     static const std::vector<std::string> getAvailableStrategies()
@@ -37,19 +39,22 @@ public:
         {
             return std::make_unique<LightnessGrayscaleStrategy>();
         }
-        if(selecctedStrategy == _strategies[3])
+        if (selecctedStrategy == _strategies[3])
         {
             return std::make_unique<ValueGrayscaleStrategy>();
         }
-        if(selecctedStrategy == _strategies[4])
+        if (selecctedStrategy == _strategies[4])
         {
             return std::make_unique<SobelEdgeDetectionStrategy>();
         }
-        if(selecctedStrategy == _strategies[5])
+        if (selecctedStrategy == _strategies[5])
         {
             return std::make_unique<CannyEdgeDetectionStrategy>();
         }
-
+        if (selecctedStrategy == _strategies[6])
+        {
+            return std::make_unique<ComicEdgeDetectionStrategy>(5, 50.0f);
+        }
 
         return std::make_unique<PerceptualGrayscaleStrategy>();
     }

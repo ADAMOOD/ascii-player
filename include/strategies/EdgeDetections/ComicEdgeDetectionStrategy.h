@@ -13,71 +13,84 @@ private:
                                4, 16, 26, 16, 4,
                                1, 4, 7, 4, 1);
 
+    int m_edgeSearchRadius = 2;     // Check 2 neighbors in each direction (total 4)
+    float m_edgeSensitivity = 0.7f; // 70% of neighbors must match
+
     uchar getShadingChar(uchar brightness)
     {
         return m_asciiChars[(brightness * (m_asciiChars.length() - 1)) / 255];
     }
-    uchar getSmartEdgeChar(int x, int y, const cv::Mat &angles, const cv::Mat &finalEdges)
+    uchar getSmartEdgeChar(int x, int y, const cv::Mat &angles, const cv::Mat &finalEdges, float edgeThreshold)
     {
         float angle = angles.at<float>(y, x);
         char pixelChar = getAsciiForAngle(angle);
 
-        int ny1 = 0, nx1 = 0;
-        int ny2 = 0, nx2 = 0;
+        int dy = 0, dx = 0;
         switch (pixelChar)
         {
         case '-':
-        {
-            ny1 = y;
-            nx1 = x - 1;
-            ny2 = y;
-            nx2 = x + 1;
-            break;
-        }
-
-        case '/':
-        {
-            ny1 = y + 1;
-            nx1 = x - 1;
-            ny2 = y - 1;
-            nx2 = x + 1;
-            break;
-        }
-        case '\\':
-        {
-            ny1 = y - 1;
-            nx1 = x - 1;
-            ny2 = y + 1;
-            nx2 = x + 1;
-            break;
-        }
+            dy = 0;
+            dx = 1;
+            break; // Step left/right
         case '|':
-        {
-            ny1 = y - 1;
-            nx1 = x;
-            ny2 = y + 1;
-            nx2 = x;
-            break;
+            dy = 1;
+            dx = 0;
+            break; // Step up/down
+        case '/':
+            dy = -1;
+            dx = 1;
+            break; // Step top-right/bottom-left
+        case '\\':
+            dy = 1;
+            dx = 1;
+            break; // Step bottom-right/top-left
+        default:
+            return ' ';
         }
-        }
-        bool neighbour1Ok = (finalEdges.at<float>(ny1, nx1) == 255.0f) && (getAsciiForAngle(angles.at<float>(ny1, nx1)) == pixelChar);
-        bool neighbour2Ok = (finalEdges.at<float>(ny2, nx2) == 255.0f) && (getAsciiForAngle(angles.at<float>(ny2, nx2)) == pixelChar);
+        
+        int matchingNeighbors = 0;
+        int totalNeighborsChecked = m_edgeSearchRadius * 2;
 
-        if (neighbour1Ok && neighbour2Ok)
+        // Check one direction (positive steps)
+        for (int step = 1; step <= m_edgeSearchRadius; step++)
         {
-            return pixelChar;
+            int ny = y + (step * dy);
+            int nx = x + (step * dx);
+            if (finalEdges.at<float>(ny, nx) >= edgeThreshold && getAsciiForAngle(angles.at<float>(ny, nx)) == pixelChar)
+            {
+                matchingNeighbors++;
+            }
+        }
+
+        // Check the opposite direction (negative steps)
+        for (int step = 1; step <= m_edgeSearchRadius; step++)
+        {
+            int ny = y - (step * dy);
+            int nx = x - (step * dx);
+            if (finalEdges.at<float>(ny, nx) >= edgeThreshold && getAsciiForAngle(angles.at<float>(ny, nx)) == pixelChar)
+            {
+                matchingNeighbors++;
+            }
+        }
+
+        // Calculate the ratio
+        float matchRatio = (float)matchingNeighbors / totalNeighborsChecked;
+
+        if (matchRatio >= m_edgeSensitivity)
+        {
+            return pixelChar; // Strong, consistent line
         }
         else
         {
-            // TODO handle different angle changes
-            return '+'; // Je to detail/roh, kreslím malý spojovací znak.
+            //todo other lines and detail handeling
+            return '+'; // Broken line, corner, or detail
         }
     }
 
 public:
     ComicEdgeDetectionStrategy(int kernelSize, float edgeTreashold)
     {
-        //TODO allow user to configure image analysing properties
+        // TODO allow user to configure image analysing properties
     }
     void onKeyPress(char key) override
     {
@@ -130,16 +143,29 @@ public:
                 float mag = nmsMagnitudes.at<float>(y, x);
                 float angle = angles.at<float>(y, x);
 
-                if (mag == 255.0f)
+                if (m_useHysteresis)
                 {
-                    outBuffer[bufferIndex] = getSmartEdgeChar(x, y, angles, nmsMagnitudes);
+                    if (mag >= 255.0f)
+                    {
+                        outBuffer[bufferIndex] = getSmartEdgeChar(x, y, angles, nmsMagnitudes, 50.0f);
+                    }
+                    else
+                    {
+                        outBuffer[bufferIndex] = getShadingChar(grayFrame.at<uchar>(y, x));
+                    }
                 }
                 else
                 {
-                    outBuffer[bufferIndex] = getShadingChar(grayFrame.at<uchar>(y, x));
+                    if (mag >= 50.0f)
+                    {
+                        outBuffer[bufferIndex] = getSmartEdgeChar(x, y, angles, nmsMagnitudes, 50.0f);
+                    }
+                    else
+                    {
+                        outBuffer[bufferIndex] = getShadingChar(grayFrame.at<uchar>(y, x));
+                    }
                 }
             }
         }
     }
 };
-
