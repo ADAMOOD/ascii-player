@@ -5,7 +5,29 @@
 class BaseEdgeDetectionStrategy : public IRenderStrategy
 {
 private:
-    /* data */
+    int m_kernelSize = 5;
+    float m_sobelMultiplier = 1.0f;
+
+public:
+    std::vector<std::string> getPropertyNames() override
+    {
+        auto props = IRenderStrategy::getPropertyNames();
+        props.push_back("Kernel Size");
+        props.push_back("Sobel Boost");
+        return props;
+    }
+    void setProperty(const std::string &name, float value) override
+    {
+        if (name == "Kernel Size")
+            m_kernelSize = static_cast<int>(value);
+        else if (name == "Sobel Boost")
+            m_sobelMultiplier = value;
+        else
+        {
+            IRenderStrategy::setProperty(name, value);
+        }
+    }
+
 protected:
     void convertToGrayscale(const cv::Mat &src, cv::Mat &dst, int width, int height)
     {

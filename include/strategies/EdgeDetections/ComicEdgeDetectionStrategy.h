@@ -5,6 +5,11 @@
 class ComicEdgeDetectionStrategy : public BaseEdgeDetectionStrategy
 {
 private:
+    float m_lowThreshold = 30.0f;
+    float m_highThreshold = 100.0f;
+    int m_searchRadius = 2;
+    float m_edgeSensitivity = 0.7f; // 70% of neighbors must match
+
     std::string m_asciiChars = " .:-=+*#%@";
     bool m_useHysteresis = false;
     const cv::Mat kernel5x5 = (cv::Mat_<float>(5, 5) << 1, 4, 7, 4, 1,
@@ -12,9 +17,6 @@ private:
                                7, 26, 41, 26, 7,
                                4, 16, 26, 16, 4,
                                1, 4, 7, 4, 1);
-
-    int m_edgeSearchRadius = 2;     // Check 2 neighbors in each direction (total 4)
-    float m_edgeSensitivity = 0.7f; // 70% of neighbors must match
 
     uchar getShadingChar(uchar brightness)
     {
@@ -47,12 +49,12 @@ private:
         default:
             return ' ';
         }
-        
+
         int matchingNeighbors = 0;
-        int totalNeighborsChecked = m_edgeSearchRadius * 2;
+        int totalNeighborsChecked = m_searchRadius * 2;
 
         // Check one direction (positive steps)
-        for (int step = 1; step <= m_edgeSearchRadius; step++)
+        for (int step = 1; step <= m_searchRadius; step++)
         {
             int ny = y + (step * dy);
             int nx = x + (step * dx);
@@ -63,7 +65,7 @@ private:
         }
 
         // Check the opposite direction (negative steps)
-        for (int step = 1; step <= m_edgeSearchRadius; step++)
+        for (int step = 1; step <= m_searchRadius; step++)
         {
             int ny = y - (step * dy);
             int nx = x - (step * dx);
@@ -82,7 +84,7 @@ private:
         }
         else
         {
-            //todo other lines and detail handeling
+            // todo other lines and detail handeling
             return '+'; // Broken line, corner, or detail
         }
     }
@@ -92,11 +94,36 @@ public:
     {
         // TODO allow user to configure image analysing properties
     }
-    void onKeyPress(char key) override
+
+    std::vector<std::string> getPropertyNames() override
     {
-        if (key == 'h' || key == 'H')
+        auto props = BaseEdgeDetectionStrategy::getPropertyNames();
+        props.push_back("Hysteresis");
+        if (m_useHysteresis)
         {
-            m_useHysteresis = !m_useHysteresis;
+            props.push_back("Hysteresis Low");
+            props.push_back("Hysteresis High");
+        }
+        props.push_back("Search Radius");
+        props.push_back("Sensitivity");
+        return props;
+    }
+
+    void setProperty(const std::string &name, float value) override
+    {
+        if (name == "Hysteresis Low")
+            m_lowThreshold = value;
+        else if (name == "Hysteresis High")
+            m_highThreshold = value;
+        else if (name == "Search Radius")
+            m_searchRadius = static_cast<int>(value);
+        else if (name == "Sensitivity")
+            m_edgeSensitivity = value;
+        else if(name =="Hysteresis")
+            m_useHysteresis = (value > 0.5f);
+        else
+        {
+            BaseEdgeDetectionStrategy::setProperty(name, value);
         }
     }
     void render(const cv::Mat &inputFrame, std::string &outBuffer, int width, int height)

@@ -12,13 +12,6 @@ private:
                                1, 4, 7, 4, 1);
 
 public:
-    void onKeyPress(char key) override
-    {
-        if (key == 'h' || key == 'H')
-        {
-            m_useHysteresis = !m_useHysteresis;
-        }
-    }
     void render(const cv::Mat &inputFrame, std::string &outBuffer, int width, int height)
     {
         cv::Mat resizedFrame;
