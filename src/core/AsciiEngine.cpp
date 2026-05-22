@@ -38,6 +38,8 @@ bool AsciiEngine::init(const std::string &videoPath)
     }
     auto strategy = ConfigManager::getValFromSettings("render_strategy");
     this->setStrategy(strategy);
+    m_menuStartIndex = 0;
+    m_selectedPropertyIndex = 0;
     double origWidth = m_cap.get(cv::CAP_PROP_FRAME_WIDTH);
     double origHeight = m_cap.get(cv::CAP_PROP_FRAME_HEIGHT);
     m_aspectRatio = origWidth / origHeight;
@@ -51,7 +53,7 @@ void AsciiEngine::updateTerminalSize()
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
     int termW = w.ws_col;
-    int termH = w.ws_row - 1; // prevent the last line from scrolling when we print the buffer
+    int termH = w.ws_row - 1; // prevent the last line from scrolling when we print the buffer and to add menu
 
     int newWidth = termW;
     int newHeight = static_cast<int>((newWidth / m_aspectRatio) * 0.5);
@@ -119,6 +121,7 @@ void AsciiEngine::play()
         processFrameToBuffer(frame);
 
         renderBuffer();
+        renderHUD();
 
         syncFramerate();
 
@@ -139,6 +142,80 @@ void AsciiEngine::play()
     lock.unlock();
 
     std::cout << "\x1b[?25h";
+}
+void AsciiEngine::renderHUD()
+{
+    if (m_activeProperties.empty() || !m_currentStrategy)
+        return;
+
+    // FÁZE 1: VYČIŠTĚNÍ ŘÁDKU
+    std::cout << "\x1b[2K"; // Smaže aktuální řádek
+
+    // FÁZE 2: POSUN KAMERY (Auto-Scroll)
+    // 2a. Ochrana před útěkem doleva
+    if (m_selectedPropertyIndex < m_menuStartIndex)
+    {
+        m_menuStartIndex = m_selectedPropertyIndex;
+    }
+
+    // 2b. Ochrana před útěkem doprava (Simulujeme šířku od startu až po kurzor)
+    int totalWidthToCursor = 0;
+    for (int i = m_menuStartIndex; i <= m_selectedPropertyIndex; ++i)
+    {
+        std::string plainText = getFormattedProperty(i);
+        totalWidthToCursor += plainText.length();
+
+        // Pokud kurzor "vytekl" mimo obrazovku, posuneme start kamery o 1 doprava a jedeme výpočet znovu
+        if (totalWidthToCursor > m_width)
+        {
+            m_menuStartIndex++;
+            i = m_menuStartIndex - 1; // Restart cyklu s novým startem
+            totalWidthToCursor = 0;
+        }
+    }
+
+    // FÁZE 3: VYKRESLENÍ (Nyní víme, že od m_menuStartIndex můžeme bezpečně kreslit)
+    int visibleChars = 0;
+    
+    for (size_t i = m_menuStartIndex; i < m_activeProperties.size(); ++i)
+    {
+        std::string plainText = getFormattedProperty(i);
+        int propLength = plainText.length();
+
+        // Pokud by další položka už přetekla přes okno, přestaneme kreslit (Kamera končí)
+        if (visibleChars + propLength > m_width)
+        {
+            break; 
+        }
+
+        visibleChars += propLength;
+
+        // Tisk vybrané položky (Invertované barvy) vs Tisk normální položky
+        if (i == static_cast<size_t>(m_selectedPropertyIndex))
+        {
+            std::cout << "\x1b[7m" << plainText << "\x1b[0m";
+        }
+        else
+        {
+            std::cout << plainText;
+        }
+    }
+
+    // Extrémně důležité: Vynutit vypsání textu na obrazovku!
+    std::cout << std::flush;
+}
+
+std::string AsciiEngine::getFormattedProperty(int index)
+{
+    if (index < 0 || index >= m_activeProperties.size()) return "";
+    
+    std::string propName = m_activeProperties[index];
+    float propValue = m_currentStrategy->getProperty(propName);
+    
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(1) << propValue;
+    
+    return "[ " + propName + ": " + ss.str() + " ]  ";
 }
 cv::Mat AsciiEngine::fetchFrameFromQueue()
 {
@@ -164,6 +241,7 @@ void AsciiEngine::setStrategy(std::string newStrategy)
     // unique_ptr cannot be copied (to prevent double-free crashes).
     // std::move explicitly transfers ownership from 'newStrategy' to 'm_currentStrategy'.
     m_currentStrategy = std::move(StrategiesFactory::createStrategy(newStrategy));
+    m_activeProperties = m_currentStrategy->getPropertyNames();
 }
 void AsciiEngine::processFrameToBuffer(const cv::Mat &frame)
 {
@@ -197,10 +275,32 @@ void AsciiEngine::checkUserInput()
             m_frameReady.notify_one();
             m_queueNotFull.notify_one();
         }
-
-        else if (m_currentStrategy)
+        switch (c)
         {
-            m_currentStrategy->onKeyPress(c);
+        case 'a':
+        {
+            if (m_selectedPropertyIndex > 0)
+                m_selectedPropertyIndex--;
+            break;
+        }
+        case 'd':
+        {
+
+            if (!m_activeProperties.empty() && m_selectedPropertyIndex < static_cast<int>(m_activeProperties.size()) - 1)
+                m_selectedPropertyIndex++;
+            break;
+        }
+        // todo handle changing properties values
+        case 'w':
+        {
+            break;
+        }
+        case 's':
+        {
+            break;
+        }
+        default:
+            break;
         }
     }
 }

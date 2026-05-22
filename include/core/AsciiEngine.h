@@ -52,6 +52,12 @@ private:
     std::unique_ptr<IRenderStrategy> m_currentStrategy;
     double m_aspectRatio;
 
+    //dynamic menu handeling
+    std::vector<std::string> m_activeProperties;
+    int m_selectedPropertyIndex = 0;
+    int m_menuStartIndex = 0;//frrom which menu item is tme menu displayed
+    std::string getFormattedProperty(int index);
+
     void updateTerminalSize();
     cv::Mat fetchFrameFromQueue();
     void processFrameToBuffer(const cv::Mat &frame);
@@ -59,6 +65,6 @@ private:
     void syncFramerate();
     void checkUserInput();
     void setStrategy(std::string newStrategy);
-
+    void renderHUD();
 
 };
