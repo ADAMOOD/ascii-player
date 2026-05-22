@@ -53,10 +53,9 @@ private:
     double m_aspectRatio;
 
     //dynamic menu handeling
-    std::vector<std::string> m_activeProperties;
+    std::vector<Property> m_activeProperties;
     int m_selectedPropertyIndex = 0;
     int m_menuStartIndex = 0;//frrom which menu item is tme menu displayed
-    std::string getFormattedProperty(int index);
 
     void updateTerminalSize();
     cv::Mat fetchFrameFromQueue();

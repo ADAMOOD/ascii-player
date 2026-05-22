@@ -9,22 +9,22 @@ private:
     float m_sobelMultiplier = 1.0f;
 
 public:
-    std::vector<std::string> getPropertyNames() override
+    std::vector<Property> getProperties() override
     {
-        auto props = IRenderStrategy::getPropertyNames();
-        props.push_back("Kernel Size");
-        props.push_back("Sobel Boost");
+        auto props = IRenderStrategy::getProperties();
+        props.push_back({"Kernel Size", PropertyType::INTEGER, (float)m_kernelSize, 2.0f, 3.0f, 11.0f}); // step 2 -> kernel has to be odd
+        props.push_back({"Sobel Boost", PropertyType::FLOAT, m_sobelMultiplier, 0.1f, 0.1f, 5.0f});
         return props;
     }
-    void setProperty(const std::string &name, float value) override
+    void setProperty(const Property property) override
     {
-        if (name == "Kernel Size")
-            m_kernelSize = static_cast<int>(value);
-        else if (name == "Sobel Boost")
-            m_sobelMultiplier = value;
+        if (property.name == "Kernel Size")
+            m_kernelSize = static_cast<int>(property.currentValue);
+        else if (property.name == "Sobel Boost")
+            m_sobelMultiplier = property.currentValue   ;
         else
         {
-            IRenderStrategy::setProperty(name, value);
+            IRenderStrategy::setProperty(property);
         }
     }
 

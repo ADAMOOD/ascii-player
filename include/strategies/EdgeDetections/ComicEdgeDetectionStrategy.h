@@ -95,35 +95,37 @@ public:
         // TODO allow user to configure image analysing properties
     }
 
-    std::vector<std::string> getPropertyNames() override
+    std::vector<Property> getProperties() override
     {
-        auto props = BaseEdgeDetectionStrategy::getPropertyNames();
-        props.push_back("Hysteresis");
+        auto props = BaseEdgeDetectionStrategy::getProperties();
+        props.push_back({"Hysteresis", PropertyType::BOOLEAN, m_useHysteresis ? 1.0f : 0.0f, 1.0f, 0.0f, 1.0f});
         if (m_useHysteresis)
         {
-            props.push_back("Hysteresis Low");
-            props.push_back("Hysteresis High");
+            props.push_back({"Hysteresis Low", PropertyType::FLOAT, m_lowThreshold, 5.0f, 0.0f, 255.0f});
+            props.push_back({"Hysteresis High", PropertyType::FLOAT, m_highThreshold, 5.0f, 0.0f, 255.0f});
         }
-        props.push_back("Search Radius");
-        props.push_back("Sensitivity");
+
+        props.push_back({"Search Radius", PropertyType::INTEGER, static_cast<float>(m_searchRadius), 1.0f, 1.0f, 10.0f});
+        props.push_back({"Sensitivity", PropertyType::FLOAT, m_edgeSensitivity, 0.05f, 0.0f, 1.0f});
+        
         return props;
     }
 
-    void setProperty(const std::string &name, float value) override
+    void setProperty(const Property property) override
     {
-        if (name == "Hysteresis Low")
-            m_lowThreshold = value;
-        else if (name == "Hysteresis High")
-            m_highThreshold = value;
-        else if (name == "Search Radius")
-            m_searchRadius = static_cast<int>(value);
-        else if (name == "Sensitivity")
-            m_edgeSensitivity = value;
-        else if(name =="Hysteresis")
-            m_useHysteresis = (value > 0.5f);
+        if (property.name == "Hysteresis Low")
+            m_lowThreshold = property.currentValue;
+        else if (property.name == "Hysteresis High")
+            m_highThreshold = property.currentValue;
+        else if (property.name == "Search Radius")
+            m_searchRadius = static_cast<int>(property.currentValue);
+        else if (property.name == "Sensitivity")
+            m_edgeSensitivity = property.currentValue;
+        else if (property.name == "Hysteresis")
+            m_useHysteresis = (property.currentValue > 0.5f);
         else
         {
-            BaseEdgeDetectionStrategy::setProperty(name, value);
+            BaseEdgeDetectionStrategy::setProperty(property);
         }
     }
     void render(const cv::Mat &inputFrame, std::string &outBuffer, int width, int height)

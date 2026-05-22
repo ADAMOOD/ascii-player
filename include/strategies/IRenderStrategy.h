@@ -1,5 +1,6 @@
 #pragma once
 #include <opencv2/opencv.hpp>
+#include "../ui/Property.h"
 #include <string>
 
 class IRenderStrategy
@@ -13,9 +14,11 @@ public:
     virtual ~IRenderStrategy() = default;
 
     // Dynamic property changes
-    virtual std::vector<std::string> getPropertyNames()
+    virtual std::vector<Property> getProperties()
     {
-        return {"Use Color"}; 
+        std::vector<Property> properties;
+        properties.push_back({"Use Color", PropertyType::BOOLEAN, m_useColor ? 1.0f : 0.0f, 1.0f, 0.0f, 1.0f});
+        return properties; 
     }
 
     virtual float getProperty(const std::string& name)
@@ -24,9 +27,9 @@ public:
         return 0.0f; // Neznámá vlastnost
     }
 
-    virtual void setProperty(const std::string& name, float value)
+    virtual void setProperty(const Property property)
     {
-        if (name == "Use Color") m_useColor = (value > 0.5f);
+        if (property.name == "Use Color") m_useColor = (property.currentValue > 0.5f);
     }
 
 protected:
