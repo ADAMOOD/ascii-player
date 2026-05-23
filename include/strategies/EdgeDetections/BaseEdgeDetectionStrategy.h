@@ -8,13 +8,13 @@ class BaseEdgeDetectionStrategy : public IRenderStrategy
 {
 private:
     float m_sobelMultiplier = 1.0f;
-    cv::Mat m_kernel = (cv::Mat_<float>(5, 5) << 1, 4, 7, 4, 1,
-                        4, 16, 26, 16, 4,
-                        7, 26, 41, 26, 7,
-                        4, 16, 26, 16, 4,
-                        1, 4, 7, 4, 1);
+    cv::Mat m_kernel ;
 
 public:
+    BaseEdgeDetectionStrategy()
+    {
+        createGaussianKernel();
+    }
     std::vector<Property> getProperties() override
     {
         auto props = IRenderStrategy::getProperties();
@@ -89,29 +89,23 @@ protected:
     }
     void createGaussianKernel()
     {
-        m_kernel = cv::Mat::zeros(m_kernelSize, m_kernelSize, CV_32FC1);
+        m_kernel = cv::Mat::zeros(1, m_kernelSize, CV_32FC1);
         float sigma = 0.3f * (((m_kernelSize - 1) / 2.0f) - 1.0f) + 0.8f;
         int halfSize = m_kernelSize / 2;
         float sum = 0.0f;
         for (int i = -halfSize; i <= halfSize; i++)
         {
-            for (int j = -halfSize; j <= halfSize; j++)
-            {
-                float exponent = -((i * i) + (j * j)) / (2.0f * sigma * sigma);
-                float kernelValue = std::exp(exponent) / (2.0f * (float)M_PI * sigma * sigma);
+            float exponent = -((i * i)) / (2.0f * sigma * sigma);
+            float kernelValue = std::exp(exponent) / (std::sqrt(2.0f * (float)M_PI) * sigma);
 
-                sum += kernelValue;
-                m_kernel.at<float>(j + halfSize, i + halfSize) = kernelValue;
-            }
+            sum += kernelValue;
+            m_kernel.at<float>(0, i + halfSize) = kernelValue;
         }
 
         // Normalization
         for (int i = 0; i < m_kernelSize; i++)
         {
-            for (int j = 0; j < m_kernelSize; j++)
-            {
-                m_kernel.at<float>(j, i) /= sum;
-            }
+            m_kernel.at<float>(0, i) /= sum;
         }
     }
     void computeSobelData(const cv::Mat &resizedFrame, cv::Mat &magnitudes, cv::Mat &angles, int width, int height)

@@ -13,7 +13,7 @@ public:
     {
         // 1. Získej properties z Base (Kernel, Sobel Boost)
         auto props = BaseEdgeDetectionStrategy::getProperties();
-        
+
         // 2. Přidej Hysteresis properties
         props.push_back({"Hysteresis", PropertyType::BOOLEAN, m_useHysteresis ? 1.0f : 0.0f, 1.0f, 0.0f, 1.0f});
         if (m_useHysteresis)
@@ -27,48 +27,52 @@ public:
     void setProperty(const Property property) override
     {
         // Obsluž své vlastnosti
-        if (property.name == "Hysteresis") m_useHysteresis = (property.currentValue > 0.5f);
-        else if (property.name == "Hysteresis Low") m_lowThreshold = property.currentValue;
-        else if (property.name == "Hysteresis High") m_highThreshold = property.currentValue;
+        if (property.name == "Hysteresis")
+            m_useHysteresis = (property.currentValue > 0.5f);
+        else if (property.name == "Hysteresis Low")
+            m_lowThreshold = property.currentValue;
+        else if (property.name == "Hysteresis High")
+            m_highThreshold = property.currentValue;
         // Pokud to neznáš, pošli to o patro výš
-        else BaseEdgeDetectionStrategy::setProperty(property);
+        else
+            BaseEdgeDetectionStrategy::setProperty(property);
     }
-    
-void render(const cv::Mat &inputFrame, std::string &outBuffer, int width, int height) override
+
+    void render(const cv::Mat &inputFrame, std::string &outBuffer, int width, int height) override
     {
         cv::Mat grayFrame = cv::Mat::zeros(height, width, CV_8UC1);
         cv::Mat magnitudes = cv::Mat::zeros(height, width, CV_32F);
         cv::Mat angles = cv::Mat::zeros(height, width, CV_32F);
-        
+
         // 1. Získáme předzpracovaná data od Base
         generateBaseEdgeData(inputFrame, grayFrame, magnitudes, angles, width, height);
 
         // 2. Aplikujeme NMS a Hysterezi
         cv::Mat nmsMagnitudes = cv::Mat::zeros(height, width, CV_32F);
         applyNonMaximumSuppression(magnitudes, angles, nmsMagnitudes, width, height);
-        
-        if (m_useHysteresis) {
+
+        if (m_useHysteresis)
+        {
             cv::Mat hysteresisResult = cv::Mat::zeros(height, width, CV_32F);
             applyHysteresis(nmsMagnitudes, hysteresisResult, width, height, m_lowThreshold, m_highThreshold);
             nmsMagnitudes = hysteresisResult;
         }
 
-        // 3. Kreslíme
-        int deadZone = (m_kernelSize / 2) + 1; // Chráníme hrany obrazu
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
                 int bufferIndex = y * (width + 1) + x;
-                
-                if (x < deadZone || y < deadZone || x >= width - deadZone || y >= height - deadZone) {
+
+                if (x == 0 || y == 0 || x == width - 1 || y == height - 1)
+                {
                     outBuffer[bufferIndex] = ' ';
                     continue;
                 }
-                
+
                 float mag = nmsMagnitudes.at<float>(y, x);
                 float angle = angles.at<float>(y, x);
-                
+
                 // DELEGUJEME ROZHODNUTÍ NA POTOMKA!
                 outBuffer[bufferIndex] = determinePixelChar(x, y, mag, angle, nmsMagnitudes, angles, grayFrame);
             }
@@ -76,7 +80,7 @@ void render(const cv::Mat &inputFrame, std::string &outBuffer, int width, int he
     }
 
 protected:
-    virtual char determinePixelChar(int x, int y, float mag, float angle, const cv::Mat& allMagnitudes, const cv::Mat& allAngles, const cv::Mat& grayFrame) = 0;
+    virtual char determinePixelChar(int x, int y, float mag, float angle, const cv::Mat &allMagnitudes, const cv::Mat &allAngles, const cv::Mat &grayFrame) = 0;
     void applyNonMaximumSuppression(const cv::Mat &magnitudes, const cv::Mat &angles, cv::Mat &dst, int width, int height)
     {
         for (int y = 1; y < height - 1; y++)

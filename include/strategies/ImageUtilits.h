@@ -1,5 +1,6 @@
 #pragma once
 #include <opencv2/opencv.hpp>
+#include <algorithm>
 
 namespace ImageUtils
 {
@@ -26,25 +27,63 @@ namespace ImageUtils
     }
     inline void applyFilter(const cv::Mat &src, cv::Mat &dst, const cv::Mat &kernel, int width, int height)
     {
-        const float sum = cv::sum(kernel)[0];
-        int halfSize = kernel.rows / 2;
+        // 1. U 1D kernelu nás zajímá počet sloupců (cols), ne řádků!
+        int halfSize = kernel.cols / 2;
 
-        for (int i = halfSize; i < height - halfSize; i++)
+        int paddedWidth = width + (2 * halfSize);
+        int paddedHeight = height + (2 * halfSize);
+
+        cv::Mat paddedSrc = cv::Mat::zeros(paddedHeight, paddedWidth, CV_8UC1);
+
+        // TATO MATICE MUSÍ BÝT FLOAT (32F) a musí být PADDED (velká), aby vertikální průchod nespadl!
+        cv::Mat tempFrame = cv::Mat::zeros(paddedHeight, paddedWidth, CV_32FC1);
+
+        // 2. Vycpání (Padding) - Tvůj kód s clamp je skvělý, nech ho tu.
+        for (int y = 0; y < paddedHeight; y++)
         {
-            for (int j = halfSize; j < width - halfSize; j++)
+            for (int x = 0; x < paddedWidth; x++)
             {
-                float blurredPixelValue = 0;
+                int srcY = std::clamp(y - halfSize, 0, height - 1);
+                int srcX = std::clamp(x - halfSize, 0, width - 1);
+                paddedSrc.at<uchar>(y, x) = src.at<uchar>(srcY, srcX);
+            }
+        }
+
+        // 3. HORIZONTÁLNÍ ROZMAZÁNÍ (čte uchar z paddedSrc, zapisuje float do tempFrame)
+        for (int y = 0; y < paddedHeight; y++) // Procházíme celou výšku
+        {
+            for (int x = halfSize; x < paddedWidth - halfSize; x++) // Vynecháme úplné okraje šířky
+            {
+                float val = 0.0f;
                 for (int k = -halfSize; k <= halfSize; k++)
                 {
-                    for (int l = -halfSize; l <= halfSize; l++)
-                    {
-                        blurredPixelValue += src.at<uchar>(i + k, j + l) * kernel.at<float>(k + halfSize, l + halfSize);
-                    }
+                    // Měníme jen osu X! Kernel má indexaci (0, k + halfSize)
+                    val += paddedSrc.at<uchar>(y, x + k) * kernel.at<float>(0, k + halfSize);
                 }
-                blurredPixelValue /= sum;
-                if (blurredPixelValue > 255.0f)
-                    blurredPixelValue = 255.0f;
-                dst.at<uchar>(i, j) = static_cast<uchar>(blurredPixelValue);
+                tempFrame.at<float>(y, x) = val;
+            }
+        }
+
+        // 4. VERTIKÁLNÍ ROZMAZÁNÍ (čte float z tempFrame, zapisuje uchar do dst)
+        for (int i = 0; i < height; i++)
+        {
+            for (int j = 0; j < width; j++)
+            {
+                float val = 0.0f;
+
+                // Přepočet indexu z originálu (i, j) na vycpanou matici
+                int paddedY = i + halfSize;
+                int paddedX = j + halfSize;
+
+                for (int k = -halfSize; k <= halfSize; k++)
+                {
+                    // Měníme jen osu Y! (paddedY + k)
+                    val += tempFrame.at<float>(paddedY + k, paddedX) * kernel.at<float>(0, k + halfSize);
+                }
+
+                if (val > 255.0f)
+                    val = 255.0f;
+                dst.at<uchar>(i, j) = static_cast<uchar>(val);
             }
         }
     }
