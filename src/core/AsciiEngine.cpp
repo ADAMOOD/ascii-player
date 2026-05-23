@@ -270,14 +270,16 @@ void AsciiEngine::checkUserInput()
         case 'w':
         case 's':
         {
+            if (m_activeProperties.empty()) break;
+            
             Property prop = m_activeProperties[m_selectedPropertyIndex];
             prop.ShiftedValue(c == 'w');
             m_currentStrategy->setProperty(prop);
+            
+            // Re-načtení po změně (Můžou přibýt/ubýt položky jako u Hystereze)
             m_activeProperties = m_currentStrategy->getProperties();
 
-            // BEZPEČNOSTNÍ POJISTKA (Kriticky důležité!)
-            // Pokud jsi právě vypnul Hysterezi, zmizely ti dvě vlastnosti (Low a High).
-            // Pokud jsi zrovna stál na konci menu, tvůj m_selectedPropertyIndex teď ukazuje mimo vektor!
+            // BEZPEČNOSTNÍ POJISTKA (Ochrana indexu po zmenšení menu)
             if (m_activeProperties.empty())
             {
                 m_selectedPropertyIndex = 0;

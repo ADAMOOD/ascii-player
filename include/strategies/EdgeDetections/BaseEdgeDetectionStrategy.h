@@ -1,12 +1,18 @@
 #pragma once
 #include <opencv2/opencv.hpp>
+#include <cmath>
 #include "../IRenderStrategy.h"
+#include "../ImageUtilits.h"
 
 class BaseEdgeDetectionStrategy : public IRenderStrategy
 {
 private:
-    int m_kernelSize = 5;
     float m_sobelMultiplier = 1.0f;
+    cv::Mat m_kernel = (cv::Mat_<float>(5, 5) << 1, 4, 7, 4, 1,
+                        4, 16, 26, 16, 4,
+                        7, 26, 41, 26, 7,
+                        4, 16, 26, 16, 4,
+                        1, 4, 7, 4, 1);
 
 public:
     std::vector<Property> getProperties() override
@@ -19,9 +25,18 @@ public:
     void setProperty(const Property property) override
     {
         if (property.name == "Kernel Size")
-            m_kernelSize = static_cast<int>(property.currentValue);
+        {
+            int newSize = static_cast<int>(property.currentValue);
+            if (newSize != m_kernelSize)
+            {
+                m_kernelSize = newSize;
+                createGaussianKernel();
+            }
+        }
         else if (property.name == "Sobel Boost")
-            m_sobelMultiplier = property.currentValue   ;
+        {
+            m_sobelMultiplier = property.currentValue;
+        }
         else
         {
             IRenderStrategy::setProperty(property);
@@ -29,127 +44,29 @@ public:
     }
 
 protected:
-    void convertToGrayscale(const cv::Mat &src, cv::Mat &dst, int width, int height)
+    int m_kernelSize = 5;
+
+    void generateBaseEdgeData(const cv::Mat &inputFrame, cv::Mat &grayFrame, cv::Mat &magnitudes, cv::Mat &angles, int width, int height)
     {
-        for (int y = 0; y < height; y++)
-        {
-            const cv::Vec3b *srcRow = src.ptr<cv::Vec3b>(y);
-            uchar *dstRow = dst.ptr<uchar>(y);
+        cv::Mat resizedFrame;
+        cv::resize(inputFrame, resizedFrame, cv::Size(width, height));
 
-            for (int x = 0; x < width; x++)
-            {
-                // Tady přečteš barvy přímo z pointeru
-                uchar b = srcRow[x][0];
-                uchar g = srcRow[x][1];
-                uchar r = srcRow[x][2];
+        // Tady se grayFrame zapíše do té proměnné, kterou jsme dostali přes referenci
+        ImageUtils::convertToGrayscale(resizedFrame, grayFrame, width, height);
 
-                uchar gray = static_cast<uchar>(0.299 * r + 0.587 * g + 0.114 * b);
+        cv::Mat blurredFrame = cv::Mat::zeros(height, width, CV_8UC1);
+        ImageUtils::applyFilter(grayFrame, blurredFrame, m_kernel, width, height);
 
-                // direct save to dst
-                dstRow[x] = gray;
-            }
-        }
+        computeSobelData(blurredFrame, magnitudes, angles, width, height);
     }
-    void applyFilter(const cv::Mat &src, cv::Mat &dst, const cv::Mat &kernel, int width, int height)
+
+    void generateBaseEdgeData(const cv::Mat &inputFrame, cv::Mat &magnitudes, cv::Mat &angles, int width, int height)
     {
-        const float sum = cv::sum(kernel)[0];
-        int halfSize = kernel.rows / 2;
+        // Vytvoříme si lokální grayFrame, který po skončení této metody prostě zanikne
+        cv::Mat dummyGrayFrame = cv::Mat::zeros(height, width, CV_8UC1);
 
-        for (int i = halfSize; i < height - halfSize; i++)
-        {
-            for (int j = halfSize; j < width - halfSize; j++)
-            {
-                float blurredPixelValue = 0;
-                for (int k = -halfSize; k <= halfSize; k++)
-                {
-                    for (int l = -halfSize; l <= halfSize; l++)
-                    {
-                        blurredPixelValue += src.at<uchar>(i + k, j + l) * kernel.at<float>(k + halfSize, l + halfSize);
-                    }
-                }
-                blurredPixelValue /= sum;
-                if (blurredPixelValue > 255.0f)
-                    blurredPixelValue = 255.0f;
-                dst.at<uchar>(i, j) = static_cast<uchar>(blurredPixelValue);
-            }
-        }
-    }
-    void applyNonMaximumSuppression(const cv::Mat &magnitudes, const cv::Mat &angles, cv::Mat &dst, int width, int height)
-    {
-        for (int y = 1; y < height - 1; y++)
-        {
-            for (int x = 1; x < width - 1; x++)
-            {
-                float mag = magnitudes.at<float>(y, x);
-                float angle = angles.at<float>(y, x);
-                float neighbor1 = 0, neighbor2 = 0;
-                if ((angle >= 0 && angle < 22.5) || (angle >= 157.5 && angle <= 180))
-                {
-                    neighbor1 = magnitudes.at<float>(y, x + 1);
-                    neighbor2 = magnitudes.at<float>(y, x - 1);
-                }
-                else if (angle >= 22.5 && angle < 67.5)
-                {
-                    neighbor1 = magnitudes.at<float>(y + 1, x - 1);
-                    neighbor2 = magnitudes.at<float>(y - 1, x + 1);
-                }
-                else if (angle >= 67.5 && angle < 112.5)
-                {
-                    neighbor1 = magnitudes.at<float>(y + 1, x);
-                    neighbor2 = magnitudes.at<float>(y - 1, x);
-                }
-                else if (angle >= 112.5 && angle < 157.5)
-                {
-                    neighbor1 = magnitudes.at<float>(y - 1, x - 1);
-                    neighbor2 = magnitudes.at<float>(y + 1, x + 1);
-                }
-                if (mag >= neighbor1 && mag >= neighbor2)
-                {
-                    dst.at<float>(y, x) = mag;
-                }
-            }
-        }
-    }
-    void applyHysteresis(const cv::Mat &magnitudes, cv::Mat &dst, int width, int height, float lowThreshold, float highThreshold)
-    {
-        for (int y = 1; y < height - 1; y++)
-        {
-            for (int x = 1; x < width - 1; x++)
-            {
-                float mag = magnitudes.at<float>(y, x);
-
-                if (mag >= highThreshold)
-                {
-                    // Silná hrana -> 100% zapisujeme 255
-                    dst.at<float>(y, x) = 255.0f;
-                }
-                else if (mag >= lowThreshold)
-                {
-                    bool connectedToStrongEdge = false;
-                    for (int j = -1; j <= 1; j++)
-                    {
-                        for (int i = -1; i <= 1; i++)
-                        {
-                            if (j == 0 && i == 0)
-                                continue;
-
-                            if (magnitudes.at<float>(y + j, x + i) >= highThreshold)
-                            {
-                                connectedToStrongEdge = true;
-                                break;
-                            }
-                        }
-                        if (connectedToStrongEdge)
-                            break;
-                    }
-
-                    if (connectedToStrongEdge)
-                    {
-                        dst.at<float>(y, x) = 255.0f;
-                    }
-                }
-            }
-        }
+        // Zavoláme tu první, plnou metodu
+        generateBaseEdgeData(inputFrame, dummyGrayFrame, magnitudes, angles, width, height);
     }
     char getAsciiForAngle(float angle)
     {
@@ -168,6 +85,33 @@ protected:
         else
         {
             return '|';
+        }
+    }
+    void createGaussianKernel()
+    {
+        m_kernel = cv::Mat::zeros(m_kernelSize, m_kernelSize, CV_32FC1);
+        float sigma = 0.3f * (((m_kernelSize - 1) / 2.0f) - 1.0f) + 0.8f;
+        int halfSize = m_kernelSize / 2;
+        float sum = 0.0f;
+        for (int i = -halfSize; i <= halfSize; i++)
+        {
+            for (int j = -halfSize; j <= halfSize; j++)
+            {
+                float exponent = -((i * i) + (j * j)) / (2.0f * sigma * sigma);
+                float kernelValue = std::exp(exponent) / (2.0f * (float)M_PI * sigma * sigma);
+
+                sum += kernelValue;
+                m_kernel.at<float>(j + halfSize, i + halfSize) = kernelValue;
+            }
+        }
+
+        // Normalization
+        for (int i = 0; i < m_kernelSize; i++)
+        {
+            for (int j = 0; j < m_kernelSize; j++)
+            {
+                m_kernel.at<float>(j, i) /= sum;
+            }
         }
     }
     void computeSobelData(const cv::Mat &resizedFrame, cv::Mat &magnitudes, cv::Mat &angles, int width, int height)
@@ -193,7 +137,7 @@ protected:
                     }
                 }
 
-                float magnitude = std::abs(sumX) + std::abs(sumY);
+                float magnitude = (std::abs(sumX) + std::abs(sumY)) * m_sobelMultiplier;
                 if (magnitude > 255)
                     magnitude = 255;
 

@@ -53,7 +53,7 @@ public:
         }
         if (selecctedStrategy == _strategies[6])
         {
-            return std::make_unique<ComicEdgeDetectionStrategy>(5, 50.0f);
+            return std::make_unique<ComicEdgeDetectionStrategy>();
         }
 
         return std::make_unique<PerceptualGrayscaleStrategy>();

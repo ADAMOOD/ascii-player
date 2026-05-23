@@ -5,21 +5,12 @@
 class SobelEdgeDetectionStrategy : public BaseEdgeDetectionStrategy
 {
 
-
 public:
     void render(const cv::Mat &inputFrame, std::string &outBuffer, int width, int height) override
     {
-        cv::Mat resizedFrame;
-        cv::resize(inputFrame, resizedFrame, cv::Size(width, height));
-
-        cv::Mat grayFrame = cv::Mat::zeros(height, width, CV_8UC1);
-        convertToGrayscale(resizedFrame, grayFrame, width, height);
-
-        // initializacion
         cv::Mat magnitudes = cv::Mat::zeros(height, width, CV_32F);
         cv::Mat angles = cv::Mat::zeros(height, width, CV_32F);
-
-        computeSobelData(grayFrame, magnitudes, angles, width, height);
+        generateBaseEdgeData(inputFrame, magnitudes, angles, width, height);
 
         // 3. DRUHÝ PRŮCHOD: Samotné kreslení
         for (int y = 0; y < height; y++)
