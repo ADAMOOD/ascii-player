@@ -6,7 +6,7 @@ class SobelEdgeDetectionStrategy : public BaseEdgeDetectionStrategy
 {
 
 public:
-    void render(const cv::Mat &inputFrame, std::string &outBuffer, int width, int height) override
+    void render(const cv::Mat &inputFrame, std::vector<ImageUtils::Pixel> &outBuffer, int width, int height) override
     {
         cv::Mat magnitudes = cv::Mat::zeros(height, width, CV_32F);
         cv::Mat angles = cv::Mat::zeros(height, width, CV_32F);
@@ -17,12 +17,12 @@ public:
         {
             for (int x = 0; x < width; x++)
             {
-                int bufferIndex = y * (width + 1) + x;
+                int bufferIndex = y * width + x;
 
                 // Tohle je kreslení do bufferu, takže tady okraje pořád chráníme!
                 if (x == 0 || y == 0 || x == width - 1 || y == height - 1)
                 {
-                    outBuffer[bufferIndex] = ' ';
+                    outBuffer[bufferIndex] = {' ', {0, 0, 0}};
                     continue;
                 }
 
@@ -32,13 +32,13 @@ public:
 
                 if (magnitude < 50)
                 {
-                    outBuffer[bufferIndex] = ' ';
+                    outBuffer[bufferIndex] = {' ', {0, 0, 0}};
                     continue;
                 }
                 if (angle < 0)
                     angle += 180;
 
-                outBuffer[bufferIndex] = getAsciiForAngle(angle);
+                outBuffer[bufferIndex] = {getAsciiForAngle(angle), {0, 0, 0}};
             }
         }
     }

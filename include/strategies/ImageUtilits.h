@@ -4,6 +4,18 @@
 
 namespace ImageUtils
 {
+    struct Pixel
+    {
+        char symbol;
+        cv::Vec3b color;
+    };
+    inline std::string getAnsiColor(cv::Vec3b pixel)
+    {
+        // Escape sequencee: "\x1b[38;2;R;G;Bm"
+        return "\x1b[38;2;" + std::to_string(pixel[2]) + ";" +
+               std::to_string(pixel[1]) + ";" +
+               std::to_string(pixel[0]) + "m";
+    }
     inline void convertToGrayscale(const cv::Mat &src, cv::Mat &dst, int width, int height)
     {
         for (int y = 0; y < height; y++)

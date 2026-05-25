@@ -33,7 +33,7 @@ public:
 
 private:
     cv::VideoCapture m_cap;
-    std::string m_frameBuffer;
+    std::vector<ImageUtils::Pixel> m_frameBuffer;
     int m_width;
     int m_height;
     std::thread m_videoProcessingThread;

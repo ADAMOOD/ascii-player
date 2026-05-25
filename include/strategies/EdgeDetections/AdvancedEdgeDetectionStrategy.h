@@ -38,7 +38,7 @@ public:
             BaseEdgeDetectionStrategy::setProperty(property);
     }
 
-    void render(const cv::Mat &inputFrame, std::string &outBuffer, int width, int height) override
+    void render(const cv::Mat &inputFrame, std::vector<ImageUtils::Pixel> &outBuffer, int width, int height) override
     {
         cv::Mat grayFrame = cv::Mat::zeros(height, width, CV_8UC1);
         cv::Mat magnitudes = cv::Mat::zeros(height, width, CV_32F);
@@ -62,11 +62,11 @@ public:
         {
             for (int x = 0; x < width; x++)
             {
-                int bufferIndex = y * (width + 1) + x;
+                int bufferIndex = y * width + x;
 
                 if (x == 0 || y == 0 || x == width - 1 || y == height - 1)
                 {
-                    outBuffer[bufferIndex] = ' ';
+                    outBuffer[bufferIndex] = {' ', {0, 0, 0}};
                     continue;
                 }
 
@@ -74,7 +74,7 @@ public:
                 float angle = angles.at<float>(y, x);
 
                 // DELEGUJEME ROZHODNUTÍ NA POTOMKA!
-                outBuffer[bufferIndex] = determinePixelChar(x, y, mag, angle, nmsMagnitudes, angles, grayFrame);
+                outBuffer[bufferIndex] = {determinePixelChar(x, y, mag, angle, nmsMagnitudes, angles, grayFrame), {0, 0, 0}};;
             }
         }
     }

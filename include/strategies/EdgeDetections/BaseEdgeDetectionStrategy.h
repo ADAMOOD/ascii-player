@@ -8,7 +8,7 @@ class BaseEdgeDetectionStrategy : public IRenderStrategy
 {
 private:
     float m_sobelMultiplier = 1.0f;
-    cv::Mat m_kernel ;
+    cv::Mat m_kernel;
 
 public:
     BaseEdgeDetectionStrategy()

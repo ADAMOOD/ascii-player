@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include "core/ConfigManager.h"
 #include "strategies/StrategiesFactory.h"
+#include "strategies/ImageUtilits.h"
 
 void enableRawMode()
 {
@@ -52,33 +53,26 @@ void AsciiEngine::updateTerminalSize()
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
-    int termW = w.ws_col;
-    int termH = w.ws_row - 1; // prevent the last line from scrolling when we print the buffer and to add menu
-
+    // ZMĚNA: Odečteme 1 znak z šířky. Tím zaručíme, že na konci řádku
+    // zbude volné místo a terminál nebude sám auto-wrapovat!
+    int termW = w.ws_col - 1;
+    int termH = w.ws_row - 1; // prevent the last line from scrolling
     int newWidth = termW;
     int newHeight = static_cast<int>((newWidth / m_aspectRatio) * 0.5);
 
-    // if the video is too tall for the terminal, we need to limit the height and recalculate the width
     if (newHeight > termH)
     {
         newHeight = termH;
         newWidth = static_cast<int>((newHeight / 0.5) * m_aspectRatio);
     }
 
-    // if the size has changed, we need to update the buffer
     if (newWidth != m_width || newHeight != m_height)
     {
         m_width = newWidth;
         m_height = newHeight;
 
-        int totalBufferSize = (m_width + 1) * m_height;
-        m_frameBuffer.assign(totalBufferSize, ' ');
-
-        for (int y = 0; y < m_height; ++y)
-        {
-            int newlineIndex = y * (m_width + 1) + m_width;
-            m_frameBuffer[newlineIndex] = '\n';
-        }
+        // OPRAVA: buffer je přesně width*height, '\n' tiskne renderBuffer() sám
+        m_frameBuffer.assign(m_width * m_height, {' ', {0, 0, 0}});
     }
 }
 void AsciiEngine::frameProducerTask()
@@ -230,7 +224,32 @@ void AsciiEngine::processFrameToBuffer(const cv::Mat &frame)
 }
 void AsciiEngine::renderBuffer()
 {
-    std::cout << "\x1b[H" << m_frameBuffer << std::flush; // flush is important to force the output to be printed immediately, otherwise it might be buffered and cause lag
+    std::cout << "\x1b[H"; // Reset kurzoru na začátek
+    
+    for (int y = 0; y < m_height; ++y)
+    {
+        for (int x = 0; x < m_width; ++x)
+        {
+            ImageUtils::Pixel p = m_frameBuffer[y * m_width + x];
+            if (m_currentStrategy->getProperty("Use Color") > 0.5f) {
+                std::cout << ImageUtils::getAnsiColor(p.color);
+            }
+            
+            std::cout << p.symbol;
+            
+            if (m_currentStrategy->getProperty("Use Color") > 0.5f) {
+                std::cout << "\x1b[0m";
+            }
+        }
+        
+        // ZMĚNA: Tiskni newline jen mezi řádky obrazu, ne za úplně posledním
+        if (y < m_height - 1) {
+            std::cout << "\n";
+        }
+    }
+    // Odsazení pro HUD
+    std::cout << "\n"; 
+    std::cout << std::flush;
 }
 
 void AsciiEngine::syncFramerate()
@@ -270,12 +289,13 @@ void AsciiEngine::checkUserInput()
         case 'w':
         case 's':
         {
-            if (m_activeProperties.empty()) break;
-            
+            if (m_activeProperties.empty())
+                break;
+
             Property prop = m_activeProperties[m_selectedPropertyIndex];
             prop.ShiftedValue(c == 'w');
             m_currentStrategy->setProperty(prop);
-            
+
             // Re-načtení po změně (Můžou přibýt/ubýt položky jako u Hystereze)
             m_activeProperties = m_currentStrategy->getProperties();
 
