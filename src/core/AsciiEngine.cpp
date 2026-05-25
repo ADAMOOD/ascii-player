@@ -224,32 +224,63 @@ void AsciiEngine::processFrameToBuffer(const cv::Mat &frame)
 }
 void AsciiEngine::renderBuffer()
 {
-    std::cout << "\x1b[H"; // Reset kurzoru na začátek
-    
+    bool useColor = m_currentStrategy->getProperty("Use Color") > 0.5f;
+    bool use8Bit = m_currentStrategy->getProperty("8-bit Colors") > 0.5f;
+    int tolerance = static_cast<int>(m_currentStrategy->getProperty("Color Tolerance"));
+
+    std::string frameOutput;
+    frameOutput.reserve(m_width * m_height * 20);
+
+    cv::Vec3b lastColor = cv::Vec3b(255, 255, 255);
+    uchar last8BitIndex = 255;
+
     for (int y = 0; y < m_height; ++y)
     {
         for (int x = 0; x < m_width; ++x)
         {
             ImageUtils::Pixel p = m_frameBuffer[y * m_width + x];
-            if (m_currentStrategy->getProperty("Use Color") > 0.5f) {
-                std::cout << ImageUtils::getAnsiColor(p.color);
+
+            if (useColor)
+            {
+                if (use8Bit)
+                {
+                    // A) Spočítej index (číslo)
+                    uchar current8BitIndex = ImageUtils::get8BitAnsiIndex(p.color);
+
+                    // B) Porovnej indexy
+                    if (current8BitIndex != last8BitIndex)
+                    {
+                        // C) Až teď vezmi kód (string)
+                        frameOutput += ImageUtils::get8BitAnsiCode(current8BitIndex);
+                        last8BitIndex = current8BitIndex;
+                    }
+                }
+                else
+                {
+                    if (ImageUtils::isColorDifferent(lastColor, p.color, tolerance))
+                    {
+                        frameOutput += ImageUtils::getAnsiColor(p.color);
+                        lastColor = p.color;
+                    }
+                }
             }
-            
-            std::cout << p.symbol;
-            
-            if (m_currentStrategy->getProperty("Use Color") > 0.5f) {
-                std::cout << "\x1b[0m";
-            }
+
+            frameOutput += p.symbol;
         }
-        
-        // ZMĚNA: Tiskni newline jen mezi řádky obrazu, ne za úplně posledním
-        if (y < m_height - 1) {
-            std::cout << "\n";
+
+        if (y < m_height - 1)
+        {
+            frameOutput += "\n";
         }
     }
-    // Odsazení pro HUD
-    std::cout << "\n"; 
-    std::cout << std::flush;
+
+    if (useColor)
+    {
+        frameOutput += "\x1b[0m";
+    }
+
+    frameOutput += "\n";
+    std::cout << "\x1b[H" << frameOutput << std::flush;
 }
 
 void AsciiEngine::syncFramerate()

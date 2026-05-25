@@ -16,6 +16,34 @@ namespace ImageUtils
                std::to_string(pixel[1]) + ";" +
                std::to_string(pixel[0]) + "m";
     }
+
+    // 1. Tato funkce spočítá jen číslo indexu (0-255)
+    inline uchar get8BitAnsiIndex(cv::Vec3b pixel)
+    {
+        uchar r = std::round(pixel[2] * 5.0f / 255.0f);
+        uchar g = std::round(pixel[1] * 5.0f / 255.0f);
+        uchar b = std::round(pixel[0] * 5.0f / 255.0f);
+        return 16 + (36 * r) + (6 * g) + b;
+    }
+
+    // 2. Tato funkce vrátí textový kód z cache
+    inline const std::string &get8BitAnsiCode(uchar index)
+    {
+        static std::vector<std::string> cache = []()
+        {
+            std::vector<std::string> c(256);
+            for (int i = 0; i < 256; ++i)
+                c[i] = "\x1b[38;5;" + std::to_string(i) + "m";
+            return c;
+        }();
+        return cache[index];
+    }
+    // Manhattan color differance
+    inline bool isColorDifferent(cv::Vec3b a, cv::Vec3b b, int diffTreashold)
+    {
+        int diff = std::abs(a[0] - b[0]) + std::abs(a[1] - b[1]) + std::abs(a[2] - b[2]);
+        return diff > diffTreashold;
+    }
     inline void convertToGrayscale(const cv::Mat &src, cv::Mat &dst, int width, int height)
     {
         for (int y = 0; y < height; y++)
