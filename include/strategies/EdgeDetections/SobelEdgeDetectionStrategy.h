@@ -34,7 +34,7 @@ public:
 
                 if (magnitude < 50)
                 {
-                    outBuffer[bufferIndex] = {'.', color,{0, 0, 0}};;
+                    outBuffer[bufferIndex] = {m_fillChar, color,{0, 0, 0}};;
                     continue;
                 }
                 if (angle < 0)

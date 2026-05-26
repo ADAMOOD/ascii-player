@@ -9,6 +9,7 @@ bool SettingsScreen::save()
     success &= ConfigManager::saveVideoPath(this->m_videoPath);
     success &= ConfigManager::setValToSettings("target_fps", m_target_fps);
     success &= ConfigManager::setValToSettings("render_strategy", m_allStrategies[this->m_selectedStrategyIndex]);
+    success &= ConfigManager::saveFillChar(m_fill_char);
     return success;
 }
 void SettingsScreen::show()
@@ -42,15 +43,17 @@ void SettingsScreen::show()
     };
 
     // 1. Vytvoření LOGIKY (Komponenty)
-    Component inputIP = Input(&m_videoPath, "please select a video file");
-    Component inputUser = Input(&m_target_fps, "please enter target FPS");
+    Component inputPath = Input(&m_videoPath, "please select a video file");
+    Component inputFps = Input(&m_target_fps, "please enter target FPS");
+    Component inputChar = Input(&m_fill_char, "please enter fill character for edge strategies");
     Component strategyDropdown = Dropdown(&m_allStrategies, &m_selectedStrategyIndex);
     Component menuButtons = Menu(&menuEntries, &selectedIndexMenu, menuOption);
 
     // 2. Propojení LOGIKY pro navigaci šipkami
     auto container = Container::Vertical({
-        inputIP,
-        inputUser,
+        inputPath,
+        inputFps,
+        inputChar,
         strategyDropdown,
         menuButtons,
     });
@@ -59,14 +62,16 @@ void SettingsScreen::show()
     auto renderer = Renderer(container, [&]
                              {    
     // Poskládáme si jednotlivé řádky
-    Element videoRow = hbox({text(" Video:    "), inputIP->Render()});
-    Element fpsRow   = hbox({text(" FPS:      "), inputUser->Render()});
-    Element stratRow = hbox({text(" Strategy: "), strategyDropdown->Render()});
+Element videoRow = hbox({text(" Video:          ") | color(Color::GrayLight), inputPath->Render()});
+Element fpsRow   = hbox({text(" Target FPS:     ") | color(Color::GrayLight), inputFps->Render()});
+Element charRow  = hbox({text(" Fill Character: ") | color(Color::GrayLight), inputChar->Render()});
+Element stratRow = hbox({text(" Strategy:       ") | color(Color::GrayLight), strategyDropdown->Render()});
     
     // Sloučíme řádky a tlačítka pod sebe
     Element content = vbox({
         videoRow,
         fpsRow,
+        charRow,
         stratRow,
         separator(),
         // Tady se vypíše status. Můžeš přidat i barvu přes | color(Color::Red)
@@ -98,5 +103,10 @@ SettingsScreen::SettingsScreen()
     else
     {
         this->m_selectedStrategyIndex = std::distance(m_allStrategies.begin(), distance);
+    }
+    this->m_fill_char=ConfigManager::getValFromSettings("fill_char");
+    if(m_fill_char.empty()||m_fill_char.length()!=1)
+    {
+        m_fill_char=".";
     }
 }

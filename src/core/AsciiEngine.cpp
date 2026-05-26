@@ -39,6 +39,13 @@ bool AsciiEngine::init(const std::string &videoPath)
     }
     auto strategy = ConfigManager::getValFromSettings("render_strategy");
     this->setStrategy(strategy);
+    //check if the unique pointer stores a strategy that inherite from base
+    if (auto edgeStrategy = dynamic_cast<BaseEdgeDetectionStrategy *>(m_currentStrategy.get()))
+    {
+        std::string savedChar = ConfigManager::getValFromSettings("fill_char");
+        char fill = savedChar.empty() ? ' ' : savedChar[0];
+        edgeStrategy->setFillChar(fill);
+    }
     m_menuStartIndex = 0;
     m_selectedPropertyIndex = 0;
     double origWidth = m_cap.get(cv::CAP_PROP_FRAME_WIDTH);
@@ -72,7 +79,7 @@ void AsciiEngine::updateTerminalSize()
         m_height = newHeight;
 
         // OPRAVA: buffer je přesně width*height, '\n' tiskne renderBuffer() sám
-        m_frameBuffer.assign(m_width * m_height, {' ', {0, 0, 0},{0,0,0}});
+        m_frameBuffer.assign(m_width * m_height, {' ', {0, 0, 0}, {0, 0, 0}});
     }
 }
 void AsciiEngine::frameProducerTask()

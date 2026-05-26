@@ -116,4 +116,12 @@ public:
         }
         return false;
     }
+    static bool saveFillChar(const std::string &character)
+    {
+        if(character.length()!=1)
+        {
+            return false;
+        }
+        return setValToSettings("fill_char",character);
+    }
 };
