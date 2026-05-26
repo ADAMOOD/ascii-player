@@ -10,7 +10,8 @@ public:
     {
         cv::Mat magnitudes = cv::Mat::zeros(height, width, CV_32F);
         cv::Mat angles = cv::Mat::zeros(height, width, CV_32F);
-        generateBaseEdgeData(inputFrame, magnitudes, angles, width, height);
+        cv::Mat coloredResizedFrame = cv::Mat::zeros(height, width, CV_8UC3);
+        generateBaseEdgeData(inputFrame, magnitudes,coloredResizedFrame, angles, width, height);
 
         // 3. DRUHÝ PRŮCHOD: Samotné kreslení
         for (int y = 0; y < height; y++)
@@ -18,11 +19,12 @@ public:
             for (int x = 0; x < width; x++)
             {
                 int bufferIndex = y * width + x;
-
+                cv::Vec3b color = coloredResizedFrame.at<cv::Vec3b>(y,x);
+                
                 // Tohle je kreslení do bufferu, takže tady okraje pořád chráníme!
                 if (x == 0 || y == 0 || x == width - 1 || y == height - 1)
                 {
-                    outBuffer[bufferIndex] = {' ', {0, 0, 0}};
+                    outBuffer[bufferIndex] = {' ',{0,0,0}, color};
                     continue;
                 }
 
@@ -32,13 +34,12 @@ public:
 
                 if (magnitude < 50)
                 {
-                    outBuffer[bufferIndex] = {' ', {0, 0, 0}};
+                    outBuffer[bufferIndex] = {'.', color,{0, 0, 0}};;
                     continue;
                 }
                 if (angle < 0)
                     angle += 180;
-
-                outBuffer[bufferIndex] = {getAsciiForAngle(angle), {0, 0, 0}};
+                outBuffer[bufferIndex] = {getAsciiForAngle(angle), color,{0,0,0}};
             }
         }
     }

@@ -72,7 +72,7 @@ void AsciiEngine::updateTerminalSize()
         m_height = newHeight;
 
         // OPRAVA: buffer je přesně width*height, '\n' tiskne renderBuffer() sám
-        m_frameBuffer.assign(m_width * m_height, {' ', {0, 0, 0}});
+        m_frameBuffer.assign(m_width * m_height, {' ', {0, 0, 0},{0,0,0}});
     }
 }
 void AsciiEngine::frameProducerTask()
@@ -245,7 +245,7 @@ void AsciiEngine::renderBuffer()
                 if (use8Bit)
                 {
                     // A) Spočítej index (číslo)
-                    uchar current8BitIndex = ImageUtils::get8BitAnsiIndex(p.color);
+                    uchar current8BitIndex = ImageUtils::get8BitAnsiIndex(p.fgColor);
 
                     // B) Porovnej indexy
                     if (current8BitIndex != last8BitIndex)
@@ -257,10 +257,10 @@ void AsciiEngine::renderBuffer()
                 }
                 else
                 {
-                    if (ImageUtils::isColorDifferent(lastColor, p.color, tolerance))
+                    if (ImageUtils::isColorDifferent(lastColor, p.fgColor, tolerance))
                     {
-                        frameOutput += ImageUtils::getAnsiColor(p.color);
-                        lastColor = p.color;
+                        frameOutput += ImageUtils::getAnsiFgColor(p.fgColor);
+                        lastColor = p.fgColor;
                     }
                 }
             }

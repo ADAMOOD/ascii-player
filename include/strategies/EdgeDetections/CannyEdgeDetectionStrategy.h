@@ -13,6 +13,6 @@ char determinePixelChar(int /*x*/, int /*y*/, float mag, float angle, const cv::
         {
             return getAsciiForAngle(angle); 
         }
-        return ' ';
+        return '.';
     }
 };

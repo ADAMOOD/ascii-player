@@ -7,12 +7,19 @@ namespace ImageUtils
     struct Pixel
     {
         char symbol;
-        cv::Vec3b color;
+        cv::Vec3b fgColor; // Foreground (Barva samotného znaku/textu)
+        cv::Vec3b bgColor; // Background (Barva pozadí za znakem)
     };
-    inline std::string getAnsiColor(cv::Vec3b pixel)
+    inline std::string getAnsiFgColor(cv::Vec3b pixel)
     {
         // Escape sequencee: "\x1b[38;2;R;G;Bm"
         return "\x1b[38;2;" + std::to_string(pixel[2]) + ";" +
+               std::to_string(pixel[1]) + ";" +
+               std::to_string(pixel[0]) + "m";
+    }
+    inline std::string getAnsiBgColor(cv::Vec3b pixel)
+    {
+        return "\x1b[48;2;" + std::to_string(pixel[2]) + ";" +
                std::to_string(pixel[1]) + ";" +
                std::to_string(pixel[0]) + "m";
     }

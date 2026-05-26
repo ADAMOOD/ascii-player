@@ -25,7 +25,7 @@ public:
                 int charIndex = (brightness * (m_asciiChars.length() - 1)) / 255;
 
                 // Teď plníš Pixel strukturu
-                outBuffer[y * width + x] = {m_asciiChars[charIndex], pixel};
+                outBuffer[y * width + x] = {m_asciiChars[charIndex], pixel,{0,0,0}};
             }
         }
     }

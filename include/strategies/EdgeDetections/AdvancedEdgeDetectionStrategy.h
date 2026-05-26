@@ -43,9 +43,9 @@ public:
         cv::Mat grayFrame = cv::Mat::zeros(height, width, CV_8UC1);
         cv::Mat magnitudes = cv::Mat::zeros(height, width, CV_32F);
         cv::Mat angles = cv::Mat::zeros(height, width, CV_32F);
-
+        cv::Mat coloredResizedFrame = cv::Mat::zeros(height, width, CV_8UC3);
         // 1. Získáme předzpracovaná data od Base
-        generateBaseEdgeData(inputFrame, grayFrame, magnitudes, angles, width, height);
+        generateBaseEdgeData(inputFrame, grayFrame,coloredResizedFrame, magnitudes, angles, width, height);
 
         // 2. Aplikujeme NMS a Hysterezi
         cv::Mat nmsMagnitudes = cv::Mat::zeros(height, width, CV_32F);
@@ -63,10 +63,11 @@ public:
             for (int x = 0; x < width; x++)
             {
                 int bufferIndex = y * width + x;
+                cv::Vec3b color = coloredResizedFrame.at<cv::Vec3b>(y,x);
 
                 if (x == 0 || y == 0 || x == width - 1 || y == height - 1)
                 {
-                    outBuffer[bufferIndex] = {' ', {0, 0, 0}};
+                    outBuffer[bufferIndex] = {' ', color,{0, 0, 0}};
                     continue;
                 }
 
@@ -74,7 +75,7 @@ public:
                 float angle = angles.at<float>(y, x);
 
                 // DELEGUJEME ROZHODNUTÍ NA POTOMKA!
-                outBuffer[bufferIndex] = {determinePixelChar(x, y, mag, angle, nmsMagnitudes, angles, grayFrame), {0, 0, 0}};;
+                outBuffer[bufferIndex] = {determinePixelChar(x, y, mag, angle, nmsMagnitudes, angles, grayFrame),color, {0, 0, 0}};;
             }
         }
     }

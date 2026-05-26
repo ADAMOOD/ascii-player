@@ -46,10 +46,12 @@ public:
 protected:
     int m_kernelSize = 5;
 
-    void generateBaseEdgeData(const cv::Mat &inputFrame, cv::Mat &grayFrame, cv::Mat &magnitudes, cv::Mat &angles, int width, int height)
+    void generateBaseEdgeData(const cv::Mat &inputFrame, cv::Mat &grayFrame,cv::Mat &coloredFrame, cv::Mat &magnitudes, cv::Mat &angles, int width, int height)
     {
         cv::Mat resizedFrame;
         cv::resize(inputFrame, resizedFrame, cv::Size(width, height));
+        
+        coloredFrame = resizedFrame;
 
         // Tady se grayFrame zapíše do té proměnné, kterou jsme dostali přes referenci
         ImageUtils::convertToGrayscale(resizedFrame, grayFrame, width, height);
@@ -60,13 +62,13 @@ protected:
         computeSobelData(blurredFrame, magnitudes, angles, width, height);
     }
 
-    void generateBaseEdgeData(const cv::Mat &inputFrame, cv::Mat &magnitudes, cv::Mat &angles, int width, int height)
+    void generateBaseEdgeData(const cv::Mat &inputFrame,cv::Mat &coloredFrame, cv::Mat &magnitudes, cv::Mat &angles, int width, int height)
     {
         // Vytvoříme si lokální grayFrame, který po skončení této metody prostě zanikne
         cv::Mat dummyGrayFrame = cv::Mat::zeros(height, width, CV_8UC1);
 
         // Zavoláme tu první, plnou metodu
-        generateBaseEdgeData(inputFrame, dummyGrayFrame, magnitudes, angles, width, height);
+        generateBaseEdgeData(inputFrame, dummyGrayFrame, magnitudes,coloredFrame, angles, width, height);
     }
     char getAsciiForAngle(float angle)
     {
