@@ -110,11 +110,21 @@ public:
 
     static bool saveVideoPath(const std::string &path)
     {
+        if(path == "webcam")
+        {
+           return setValToSettings("use_webcam","true");
+        }
         if (isValidVideoFile(path))
         {
+            setValToSettings("use_webcam","false");
             return setValToSettings("video_path", path);
         }
         return false;
+    }
+    static bool GetUseWebcam()
+    {
+        std::string webcam = getValFromSettings("use_webcam");
+        return webcam == "true" || webcam == "1";
     }
     static bool saveFillChar(const std::string &character)
     {

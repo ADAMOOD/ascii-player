@@ -6,7 +6,15 @@
 bool SettingsScreen::save()
 {
     bool success = true;
-    success &= ConfigManager::saveVideoPath(this->m_videoPath);
+    if (m_use_webcam)
+    {
+        success &= ConfigManager::saveVideoPath("webcam");
+    }
+    else
+    {
+        success &= ConfigManager::saveVideoPath(this->m_videoPath);
+    }
+
     success &= ConfigManager::setValToSettings("target_fps", m_target_fps);
     success &= ConfigManager::setValToSettings("render_strategy", m_allStrategies[this->m_selectedStrategyIndex]);
     success &= ConfigManager::saveFillChar(m_fill_char);
@@ -20,7 +28,7 @@ void SettingsScreen::show()
     int selectedIndexMenu = 0;
     std::vector<std::string> menuEntries = {"Save settings", "Back to main menu"};
     MenuOption menuOption;
-    std::string statusMessage = ""; 
+    std::string statusMessage = "";
 
     menuOption.on_enter = [&]
     {
@@ -49,9 +57,27 @@ void SettingsScreen::show()
     Component strategyDropdown = Dropdown(&m_allStrategies, &m_selectedStrategyIndex);
     Component menuButtons = Menu(&menuEntries, &selectedIndexMenu, menuOption);
 
+    ftxui::CheckboxOption cbOpt = ftxui::CheckboxOption::Simple();
+    cbOpt.transform = [](const ftxui::EntryState &s)
+    {
+        // s.state obsahuje true/false podle toho, jestli je checkbox zaškrtnutý
+        auto prefix = ftxui::text(s.state ? "[X] " : "[ ] ");
+        auto t = ftxui::text(s.label);
+
+        // Zvýraznění celého řádku, když na něj najedeš šipkami
+        if (s.active)
+        {
+            t |= ftxui::inverted;
+        }
+        return ftxui::hbox({prefix, t});
+    };
+
+    Component webcamCheckbox = Checkbox("Use webcam as a video source", &m_use_webcam, cbOpt);
+
     // 2. Propojení LOGIKY pro navigaci šipkami
     auto container = Container::Vertical({
         inputPath,
+        webcamCheckbox,
         inputFps,
         inputChar,
         strategyDropdown,
@@ -63,6 +89,7 @@ void SettingsScreen::show()
                              {    
     // Poskládáme si jednotlivé řádky
 Element videoRow = hbox({text(" Video:          ") | color(Color::GrayLight), inputPath->Render()});
+Element webcamRow = hbox({text(" Webcam:         ") | color(Color::GrayLight), webcamCheckbox->Render()});
 Element fpsRow   = hbox({text(" Target FPS:     ") | color(Color::GrayLight), inputFps->Render()});
 Element charRow  = hbox({text(" Fill Character: ") | color(Color::GrayLight), inputChar->Render()});
 Element stratRow = hbox({text(" Strategy:       ") | color(Color::GrayLight), strategyDropdown->Render()});
@@ -70,6 +97,7 @@ Element stratRow = hbox({text(" Strategy:       ") | color(Color::GrayLight), st
     // Sloučíme řádky a tlačítka pod sebe
     Element content = vbox({
         videoRow,
+        webcamRow,
         fpsRow,
         charRow,
         stratRow,
@@ -104,9 +132,10 @@ SettingsScreen::SettingsScreen()
     {
         this->m_selectedStrategyIndex = std::distance(m_allStrategies.begin(), distance);
     }
-    this->m_fill_char=ConfigManager::getValFromSettings("fill_char");
-    if(m_fill_char.empty()||m_fill_char.length()!=1)
+    this->m_fill_char = ConfigManager::getValFromSettings("fill_char");
+    if (m_fill_char.empty() || m_fill_char.length() != 1)
     {
-        m_fill_char=".";
+        m_fill_char = ".";
     }
+    m_use_webcam = ConfigManager::GetUseWebcam();
 }

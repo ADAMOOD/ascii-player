@@ -27,22 +27,38 @@ int main()
         {
         case 0:
         {
-            std::string currentVideo = ConfigManager::loadVideoPath();
-            if (currentVideo.empty())
-            {
-                currentVideo = tui.showFileExplorer("../");
-                ConfigManager::saveVideoPath(currentVideo);
-            }
+            bool useWebcam = ConfigManager::GetUseWebcam();
             AsciiEngine engine;
-
-            if (engine.init(currentVideo))
+            if (!useWebcam)
             {
-                engine.play();
+                std::string currentVideo = ConfigManager::loadVideoPath();
+                if (currentVideo.empty())
+                {
+                    currentVideo = tui.showFileExplorer("../");
+                    ConfigManager::saveVideoPath(currentVideo);
+                }
+
+                if (engine.init(currentVideo))
+                {
+                    engine.play();
+                }
+                else
+                {
+                    std::cerr << "[ERR] " << std::endl;
+                }
             }
             else
             {
-                std::cerr << "[ERR] " << std::endl;
+                if (engine.init())
+                {
+                    engine.play();
+                }
+                else
+                {
+                    std::cerr << "[ERR] " << std::endl;
+                }
             }
+
             break;
         }
         case 1:

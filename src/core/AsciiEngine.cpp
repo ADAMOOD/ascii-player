@@ -29,6 +29,32 @@ void disableRawMode()
     tcsetattr(STDIN_FILENO, TCSANOW, &term);
 }
 
+// 1. Společná metoda, co se zavolá po úspěšném otevření kamery i souboru
+bool AsciiEngine::setupEngineConfigs()
+{
+    auto strategy = ConfigManager::getValFromSettings("render_strategy");
+    this->setStrategy(strategy);
+    
+    // Check if the unique pointer stores a strategy that inherits from base
+    if (auto edgeStrategy = dynamic_cast<BaseEdgeDetectionStrategy *>(m_currentStrategy.get()))
+    {
+        std::string savedChar = ConfigManager::getValFromSettings("fill_char");
+        char fill = savedChar.empty() ? ' ' : savedChar[0];
+        edgeStrategy->setFillChar(fill);
+    }
+    
+    m_menuStartIndex = 0;
+    m_selectedPropertyIndex = 0;
+    double origWidth = m_cap.get(cv::CAP_PROP_FRAME_WIDTH);
+    double origHeight = m_cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+    m_aspectRatio = origWidth / origHeight;
+    m_width = 0;
+    
+    updateTerminalSize();
+    return true;
+}
+
+// 2. Init pro VIDEOSOUBOR
 bool AsciiEngine::init(const std::string &videoPath)
 {
     m_cap.open(videoPath);
@@ -37,24 +63,23 @@ bool AsciiEngine::init(const std::string &videoPath)
         std::cerr << "Chyba: Nelze otevrit video: " << videoPath << std::endl;
         return false;
     }
-    auto strategy = ConfigManager::getValFromSettings("render_strategy");
-    this->setStrategy(strategy);
-    //check if the unique pointer stores a strategy that inherite from base
-    if (auto edgeStrategy = dynamic_cast<BaseEdgeDetectionStrategy *>(m_currentStrategy.get()))
-    {
-        std::string savedChar = ConfigManager::getValFromSettings("fill_char");
-        char fill = savedChar.empty() ? ' ' : savedChar[0];
-        edgeStrategy->setFillChar(fill);
-    }
-    m_menuStartIndex = 0;
-    m_selectedPropertyIndex = 0;
-    double origWidth = m_cap.get(cv::CAP_PROP_FRAME_WIDTH);
-    double origHeight = m_cap.get(cv::CAP_PROP_FRAME_HEIGHT);
-    m_aspectRatio = origWidth / origHeight;
-    m_width = 0;
-    updateTerminalSize();
-    return true;
+    
+    return setupEngineConfigs(); // Dokončíme nastavení
 }
+
+// 3. Init pro WEBKAMERU (Bez parametrů)
+bool AsciiEngine::init()
+{
+    m_cap.open(0); // 0 je v OpenCV výchozí webkamera
+    if (!m_cap.isOpened())
+    {
+        std::cerr << "Chyba: Nelze otevrit webkameru. Zkontrolujte pripojeni." << std::endl;
+        return false;
+    }
+    
+    return setupEngineConfigs(); // Dokončíme nastavení
+}
+
 void AsciiEngine::updateTerminalSize()
 {
     struct winsize w;

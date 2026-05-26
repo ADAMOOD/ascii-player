@@ -27,6 +27,7 @@ public:
      * @return false If there was an error opening the video file or initializing the engine.
      */
     bool init(const std::string &videoPath);
+    bool init();//for webcam
 
     void frameProducerTask();
     void play();
@@ -57,6 +58,7 @@ private:
     int m_selectedPropertyIndex = 0;
     int m_menuStartIndex = 0;//frrom which menu item is tme menu displayed
 
+    bool setupEngineConfigs();
     void updateTerminalSize();
     cv::Mat fetchFrameFromQueue();
     void processFrameToBuffer(const cv::Mat &frame);
