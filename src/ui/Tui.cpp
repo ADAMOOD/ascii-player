@@ -79,5 +79,5 @@ std::string Tui::showFileExplorer(const std::string &directory)
 void Tui::showOptionsMenu()
 {
     SettingsScreen screen;
-    screen.show();
+    screen.show(*this); // Tui se podává do SettingsScreenu
 }
