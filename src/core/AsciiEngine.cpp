@@ -1,94 +1,129 @@
 #include "core/AsciiEngine.h"
 #include <iostream>
-#include <termios.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include "core/ConfigManager.h"
 #include "strategies/StrategiesFactory.h"
 #include "strategies/ImageUtilits.h"
+#include <opencv2/core/utils/logger.hpp>
+
+// --- MULTIPLATFORMNÍ MAGIE PRO TERMINÁL ---
+#ifdef _WIN32
+    #include <windows.h>
+    #include <conio.h>
+#else
+    #include <termios.h>
+    #include <unistd.h>
+    #include <sys/ioctl.h>
+#endif
+// ------------------------------------------
 
 void enableRawMode()
 {
+#ifdef _WIN32
+    // Windows má raw mode vyřešený už funkcí _getch()
+#else
     struct termios term;
     tcgetattr(STDIN_FILENO, &term);
-
     term.c_lflag &= ~(ICANON | ECHO);
-
-    // Nové nastavení pro absolutně neblokující čtení (funguje 100% i ve WSL)
-    term.c_cc[VMIN] = 0;  // Nečekej na žádný minimální počet znaků
-    term.c_cc[VTIME] = 0; // Časový limit čekání je 0
-
+    term.c_cc[VMIN] = 0;
+    term.c_cc[VTIME] = 0;
     tcsetattr(STDIN_FILENO, TCSANOW, &term);
+#endif
 }
 
 void disableRawMode()
 {
+#ifndef _WIN32
     struct termios term;
     tcgetattr(STDIN_FILENO, &term);
     term.c_lflag |= (ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &term);
+#endif
 }
 
-// 1. Společná metoda, co se zavolá po úspěšném otevření kamery i souboru
 bool AsciiEngine::setupEngineConfigs()
 {
     auto strategy = ConfigManager::getValFromSettings("render_strategy");
     this->setStrategy(strategy);
-    
-    // Check if the unique pointer stores a strategy that inherits from base
+
     if (auto edgeStrategy = dynamic_cast<BaseEdgeDetectionStrategy *>(m_currentStrategy.get()))
     {
         std::string savedChar = ConfigManager::getValFromSettings("fill_char");
         char fill = savedChar.empty() ? ' ' : savedChar[0];
         edgeStrategy->setFillChar(fill);
     }
-    
+
     m_menuStartIndex = 0;
     m_selectedPropertyIndex = 0;
     double origWidth = m_cap.get(cv::CAP_PROP_FRAME_WIDTH);
     double origHeight = m_cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+
+    if (origWidth <= 0 || origHeight <= 0)
+    {
+        origWidth = 640;
+        origHeight = 480;
+    }
+
     m_aspectRatio = origWidth / origHeight;
     m_width = 0;
-    
+
     updateTerminalSize();
     return true;
 }
 
-// 2. Init pro VIDEOSOUBOR
 bool AsciiEngine::init(const std::string &videoPath)
 {
+    m_isLiveStream = false;
     m_cap.open(videoPath);
     if (!m_cap.isOpened())
     {
         std::cerr << "Chyba: Nelze otevrit video: " << videoPath << std::endl;
         return false;
     }
-    
-    return setupEngineConfigs(); // Dokončíme nastavení
+    return setupEngineConfigs();
 }
 
-// 3. Init pro WEBKAMERU (Bez parametrů)
 bool AsciiEngine::init()
 {
-    m_cap.open(0); // 0 je v OpenCV výchozí webkamera
+    m_isLiveStream = true;
+
+// --- MULTIPLATFORMNÍ VÝBĚR OVLADAČE KAMERY ---
+#ifdef _WIN32
+    m_cap.open(0, cv::CAP_MSMF);
+#else
+    m_cap.open(0, cv::CAP_V4L2);
+#endif
+// ---------------------------------------------
+
     if (!m_cap.isOpened())
     {
-        std::cerr << "Chyba: Nelze otevrit webkameru. Zkontrolujte pripojeni." << std::endl;
+        std::cerr << "Chyba: Nelze otevrit webkameru." << std::endl;
         return false;
     }
-    
-    return setupEngineConfigs(); // Dokončíme nastavení
+
+    m_cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
+    m_cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
+    m_cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
+    m_cap.set(cv::CAP_PROP_FPS, 30);
+    m_cap.set(cv::CAP_PROP_BUFFERSIZE, 1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    return setupEngineConfigs();
 }
 
 void AsciiEngine::updateTerminalSize()
 {
+#ifdef _WIN32
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+    int termW = csbi.srWindow.Right - csbi.srWindow.Left;
+    int termH = csbi.srWindow.Bottom - csbi.srWindow.Top;
+#else
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-
-    // ZMĚNA: Odečteme 1 znak z šířky. Tím zaručíme, že na konci řádku
-    // zbude volné místo a terminál nebude sám auto-wrapovat!
     int termW = w.ws_col - 1;
-    int termH = w.ws_row - 1; // prevent the last line from scrolling
+    int termH = w.ws_row - 1;
+#endif
+
     int newWidth = termW;
     int newHeight = static_cast<int>((newWidth / m_aspectRatio) * 0.5);
 
@@ -102,11 +137,10 @@ void AsciiEngine::updateTerminalSize()
     {
         m_width = newWidth;
         m_height = newHeight;
-
-        // OPRAVA: buffer je přesně width*height, '\n' tiskne renderBuffer() sám
         m_frameBuffer.assign(m_width * m_height, {' ', {0, 0, 0}, {0, 0, 0}});
     }
 }
+
 void AsciiEngine::frameProducerTask()
 {
     while (this->m_isRunning)
@@ -115,51 +149,58 @@ void AsciiEngine::frameProducerTask()
         m_cap.read(tmp);
         if (tmp.empty())
         {
-            m_isRunning = false;
-            m_frameReady.notify_one();
-            break;
+            if (m_isLiveStream)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
+            else
+            {
+                m_isRunning = false;
+                m_frameReady.notify_one();
+                break;
+            }
         }
         std::unique_lock<std::mutex> uniqueLock(m_queueMutex);
-        m_queueNotFull.wait(uniqueLock, [&]
-                            { return m_frames.size() < MAX_QUEUE_SIZE || !m_isRunning; });
+        m_queueNotFull.wait(uniqueLock, [&] { return m_frames.size() < MAX_QUEUE_SIZE || !m_isRunning; });
         m_frames.push(tmp);
         uniqueLock.unlock();
         m_frameReady.notify_one();
     }
 }
+
 void AsciiEngine::play()
 {
     enableRawMode();
     m_isRunning = true;
-    // Start the background thread
     m_videoProcessingThread = std::thread(&AsciiEngine::frameProducerTask, this);
-    cv::Mat grayFrame;
-    cv::Mat resizedFrame;
     std::cout << "\x1b[2J\x1b[?25l";
+
     while (m_isRunning)
     {
         updateTerminalSize();
-
         cv::Mat frame = fetchFrameFromQueue();
+
         if (frame.empty())
-            break;
+        {
+            if (!m_isRunning) break;
+            checkUserInput();
+            continue;
+        }
 
         processFrameToBuffer(frame);
-
         renderBuffer();
         renderHUD();
-
         syncFramerate();
-
         checkUserInput();
     }
+
     disableRawMode();
     if (m_videoProcessingThread.joinable())
     {
         m_videoProcessingThread.join();
     }
 
-    // clear the frame queue to free memory
     std::unique_lock<std::mutex> lock(m_queueMutex);
     while (!m_frames.empty())
     {
@@ -169,12 +210,13 @@ void AsciiEngine::play()
 
     std::cout << "\x1b[?25h";
 }
+
 void AsciiEngine::renderHUD()
 {
     if (m_activeProperties.empty() || !m_currentStrategy)
         return;
 
-    std::cout << "\x1b[2K"; // clear the properties line
+    std::cout << "\x1b[2K";
 
     if (m_selectedPropertyIndex < m_menuStartIndex)
     {
@@ -190,25 +232,20 @@ void AsciiEngine::renderHUD()
         if (totalWidthToCursor > m_width)
         {
             m_menuStartIndex++;
-            i = m_menuStartIndex - 1; // Restart cyklu s novým startem
+            i = m_menuStartIndex - 1;
             totalWidthToCursor = 0;
         }
     }
 
-    // FÁZE 3: VYKRESLENÍ (Nyní víme, že od m_menuStartIndex můžeme bezpečně kreslit)
     int visibleChars = 0;
-
     for (size_t i = m_menuStartIndex; i < m_activeProperties.size(); ++i)
     {
         std::string plainText = m_activeProperties[i].toString();
         int propLength = plainText.length();
 
-        if (visibleChars + propLength > m_width)
-        {
-            break;
-        }
+        if (visibleChars + propLength > m_width) break;
+        
         visibleChars += propLength;
-        // Tisk vybrané položky (Invertované barvy) vs Tisk normální položky
         if (i == static_cast<size_t>(m_selectedPropertyIndex))
         {
             std::cout << "\x1b[7m" << plainText << "\x1b[0m";
@@ -226,11 +263,9 @@ cv::Mat AsciiEngine::fetchFrameFromQueue()
     cv::Mat frame;
     std::unique_lock<std::mutex> uniqueLock(m_queueMutex);
 
-    m_frameReady.wait(uniqueLock, [&]
-                      { return !m_frames.empty() || !m_isRunning; });
+    bool gotFrame = m_frameReady.wait_for(uniqueLock, std::chrono::milliseconds(50), [&] { return !m_frames.empty() || !m_isRunning; });
 
-    // Pokud se vypina a fronta je prazdna, vratime prazdny frame
-    if (!m_isRunning && m_frames.empty())
+    if (!gotFrame || (!m_isRunning && m_frames.empty()))
         return cv::Mat();
 
     frame = m_frames.front();
@@ -240,13 +275,13 @@ cv::Mat AsciiEngine::fetchFrameFromQueue()
 
     return frame;
 }
+
 void AsciiEngine::setStrategy(std::string newStrategy)
 {
-    // unique_ptr cannot be copied (to prevent double-free crashes).
-    // std::move explicitly transfers ownership from 'newStrategy' to 'm_currentStrategy'.
     m_currentStrategy = std::move(StrategiesFactory::createStrategy(newStrategy));
     m_activeProperties = m_currentStrategy->getProperties();
 }
+
 void AsciiEngine::processFrameToBuffer(const cv::Mat &frame)
 {
     if (m_currentStrategy)
@@ -254,6 +289,7 @@ void AsciiEngine::processFrameToBuffer(const cv::Mat &frame)
         m_currentStrategy->render(frame, m_frameBuffer, m_width, m_height);
     }
 }
+
 void AsciiEngine::renderBuffer()
 {
     bool useColor = m_currentStrategy->getProperty("Use Color") > 0.5f;
@@ -276,13 +312,9 @@ void AsciiEngine::renderBuffer()
             {
                 if (use8Bit)
                 {
-                    // A) Spočítej index (číslo)
                     uchar current8BitIndex = ImageUtils::get8BitAnsiIndex(p.fgColor);
-
-                    // B) Porovnej indexy
                     if (current8BitIndex != last8BitIndex)
                     {
-                        // C) Až teď vezmi kód (string)
                         frameOutput += ImageUtils::get8BitAnsiCode(current8BitIndex);
                         last8BitIndex = current8BitIndex;
                     }
@@ -296,73 +328,70 @@ void AsciiEngine::renderBuffer()
                     }
                 }
             }
-
             frameOutput += p.symbol;
         }
-
-        if (y < m_height - 1)
-        {
-            frameOutput += "\n";
-        }
+        if (y < m_height - 1) frameOutput += "\n";
     }
 
-    if (useColor)
-    {
-        frameOutput += "\x1b[0m";
-    }
-
+    if (useColor) frameOutput += "\x1b[0m";
     frameOutput += "\n";
     std::cout << "\x1b[H" << frameOutput << std::flush;
 }
 
 void AsciiEngine::syncFramerate()
 {
-    // TODO
+    // Zde bude tvá synchronizace
     std::this_thread::sleep_for(std::chrono::milliseconds(33));
 }
+
 void AsciiEngine::checkUserInput()
 {
-    char c;
-    // Funkce read zkusí přečíst 1 bajt ze standardního vstupu (0).
-    // Protože jsme v O_NONBLOCK režimu, pokud není klávesa stisknutá,
-    // read okamžitě vrátí -1 a program jede plynule dál.
-    // Pokud je klávesa stisknutá, vrátí 1 a znak se uloží do proměnné 'c'.
+    char c = 0;
+    bool hasInput = false;
+
+// --- MULTIPLATFORMNÍ VSTUP Z KLÁVESNICE ---
+#ifdef _WIN32
+    if (_kbhit())
+    {
+        c = _getch();
+        hasInput = true;
+    }
+#else
     if (read(STDIN_FILENO, &c, 1) == 1)
+    {
+        hasInput = true;
+    }
+#endif
+// ------------------------------------------
+
+    if (hasInput)
     {
         if (c == 'q' || c == 'Q')
         {
             m_isRunning = false;
             m_frameReady.notify_one();
             m_queueNotFull.notify_one();
+            return;
         }
+
         switch (c)
         {
         case 'a':
-        {
-            if (m_selectedPropertyIndex > 0)
-                m_selectedPropertyIndex--;
+            if (m_selectedPropertyIndex > 0) m_selectedPropertyIndex--;
             break;
-        }
         case 'd':
-        {
             if (!m_activeProperties.empty() && m_selectedPropertyIndex < static_cast<int>(m_activeProperties.size()) - 1)
                 m_selectedPropertyIndex++;
             break;
-        }
         case 'w':
         case 's':
-        {
-            if (m_activeProperties.empty())
-                break;
+            if (m_activeProperties.empty()) break;
 
             Property prop = m_activeProperties[m_selectedPropertyIndex];
             prop.ShiftedValue(c == 'w');
             m_currentStrategy->setProperty(prop);
-
-            // Re-načtení po změně (Můžou přibýt/ubýt položky jako u Hystereze)
             m_activeProperties = m_currentStrategy->getProperties();
 
-            // BEZPEČNOSTNÍ POJISTKA (Ochrana indexu po zmenšení menu)
             if (m_activeProperties.empty())
             {
                 m_selectedPropertyIndex = 0;
@@ -371,10 +400,6 @@ void AsciiEngine::checkUserInput()
             {
                 m_selectedPropertyIndex = m_activeProperties.size() - 1;
             }
-
-            break;
-        }
-        default:
             break;
         }
     }

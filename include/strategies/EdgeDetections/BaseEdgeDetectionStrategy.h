@@ -1,8 +1,15 @@
 #pragma once
-#include <opencv2/opencv.hpp>
+
 #include <cmath>
-#include "../IRenderStrategy.h"
-#include "../ImageUtilits.h"
+
+// MULTIPLATFORMNÍ OŠETŘENÍ PÍ
+// Pokud systém (Windows) nezná M_PI, definujeme ho sami. Linux toto přeskočí.
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+#include "strategies/IRenderStrategy.h"
+#include <opencv2/opencv.hpp>
 
 class BaseEdgeDetectionStrategy : public IRenderStrategy
 {

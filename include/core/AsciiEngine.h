@@ -1,17 +1,19 @@
 #pragma once
-#include <opencv2/opencv.hpp>
+
+// Standardní C++ knihovny potřebné pro proměnné ve třídě
 #include <string>
-#include <thread>
+#include <vector>
 #include <queue>
+#include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
 #include <memory>
-#include <sys/ioctl.h>
-#include <unistd.h>
 
+// OpenCV a vlastní hlavičky
+#include <opencv2/opencv.hpp>
 #include "strategies/IRenderStrategy.h"
-
+#include "strategies/ImageUtilits.h" // Pro ImageUtils::Pixel
 
 class AsciiEngine
 {
@@ -19,15 +21,8 @@ public:
     AsciiEngine() = default;
     ~AsciiEngine() = default;
 
-    /**
-     * @brief Inictializace AsciiEngine pro prehravani videa jako ASCII art v terminalu.
-     * * This method opens the video file, calculates the correct height based on the target width and the aspect ratio of the original video.ion for terminal fonts, and prepares the buffer for storing ASCII characters.
-     * * @param videoPath Path to the source video (e.g. "video.mp4").
-     * @return true If the video was successfully opened and the engine initialized.
-     * @return false If there was an error opening the video file or initializing the engine.
-     */
     bool init(const std::string &videoPath);
-    bool init();//for webcam
+    bool init(); // pro webkameru
 
     void frameProducerTask();
     void play();
@@ -47,16 +42,14 @@ private:
     std::condition_variable m_queueNotFull;
     const size_t MAX_QUEUE_SIZE = 30;
 
-    // Smart pointer ensuring EXCLUSIVE ownership of the rendering strategy.
-    // Automatically calls 'delete' when AsciiEngine is destroyed or when the strategy changes.
-    // Guarantees zero memory leaks without manual memory management.
+    bool m_isLiveStream = false;
+
     std::unique_ptr<IRenderStrategy> m_currentStrategy;
     double m_aspectRatio;
 
-    //dynamic menu handeling
     std::vector<Property> m_activeProperties;
     int m_selectedPropertyIndex = 0;
-    int m_menuStartIndex = 0;//frrom which menu item is tme menu displayed
+    int m_menuStartIndex = 0;
 
     bool setupEngineConfigs();
     void updateTerminalSize();
@@ -67,5 +60,4 @@ private:
     void checkUserInput();
     void setStrategy(std::string newStrategy);
     void renderHUD();
-
 };

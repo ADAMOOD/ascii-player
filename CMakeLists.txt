@@ -1,20 +1,35 @@
-cmake_minimum_required(VERSION 3.14) # FTXUI vyžaduje o něco novější CMake
+cmake_minimum_required(VERSION 3.14)
 project(AsciiPlayer)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O3")
 
+# Globální ošetření kompilátorů (Windows MSVC vs Linux GCC)
+if(MSVC)
+    add_compile_definitions(NOMINMAX)
+    # Přidána maximální optimalizace rychlosti a agresivní matematika pro OpenCV
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /O2 /Ot /Oi /fp:fast")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O3")
+endif()
+
+# OpenCV se najde všude (na Win přes vcpkg, na Linuxu přes apt-get)
 find_package(OpenCV REQUIRED)
 
-# --- Pridani FTXUI z GitHubu ---
-include(FetchContent)
-FetchContent_Declare(ftxui
-  GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI
-  GIT_TAG main
-)
-FetchContent_MakeAvailable(ftxui)
-# -------------------------------
+# --- CHYTRÁ VÝHYBKA PRO FTXUI ---
+if(WIN32)
+    # Na Windows už ho máme zkompilovaný z vcpkg
+    find_package(ftxui CONFIG REQUIRED)
+else()
+    # Na Linuxu si ho CMake stáhne sám z GitHubu, přesně jak jsi zvyklý
+    include(FetchContent)
+    FetchContent_Declare(ftxui
+      GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI
+      GIT_TAG main
+    )
+    FetchContent_MakeAvailable(ftxui)
+endif()
+# --------------------------------
 
 set(SOURCES 
     src/main.cpp 
@@ -24,14 +39,11 @@ set(SOURCES
     src/ui/SettingsScreen.cpp
 )
 
-# add_executable teď vezme jen ten seznam SOURCES a nic víc
 add_executable(ASCII-PLAYER ${SOURCES})
 
-# Tohle zůstává stejné, tvoří to ten "kořen" pro tvé includy
 target_include_directories(ASCII-PLAYER PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
-# Musime zlinkovat nejen OpenCV, ale i tri moduly z FTXUI
-target_link_libraries(ASCII-PLAYER 
+target_link_libraries(ASCII-PLAYER PRIVATE
     ${OpenCV_LIBS} 
     ftxui::screen 
     ftxui::dom 

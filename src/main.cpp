@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <opencv2/core/utils/logger.hpp> 
 
 int main()
 {
