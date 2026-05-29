@@ -4,7 +4,6 @@
 #include <filesystem>
 #include "ui/SettingsScreen.h"
 
-// FTXUI Headers
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
@@ -79,5 +78,5 @@ std::string Tui::showFileExplorer(const std::string &directory)
 void Tui::showOptionsMenu()
 {
     SettingsScreen screen;
-    screen.show(*this); // Tui se podává do SettingsScreenu
+    screen.show(*this);//reference to Tui is passed to SettingsScreen to allow it to call showFileExplorer when the user wants to change the video path.
 }

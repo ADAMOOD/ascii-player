@@ -34,7 +34,11 @@ endif()
 set(SOURCES 
     src/main.cpp 
     src/core/AsciiEngine.cpp
+    src/core/ConfigManager.cpp
     src/ui/Tui.cpp
+    src/ui/Property.cpp
+    src/strategies/StrategiesFactory.cpp
+    src/strategies/ImageUtilits.cpp
     src/strategies/BaseGrayscaleStrategy.cpp
     src/ui/SettingsScreen.cpp
 )

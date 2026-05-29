@@ -1,58 +1,42 @@
 #pragma once
 #include <string>
-#include <sstream>
-#include <iomanip>
-#include <algorithm>
 
+/**
+ * @enum PropertyType
+ * @brief Defines the data type of a dynamic property.
+ */
 enum class PropertyType
 {
-    BOOLEAN,
-    INTEGER,
-    FLOAT
+    BOOLEAN, ///< Represents an ON/OFF state (threshold 0.5).
+    INTEGER, ///< Represents whole numbers (e.g., Kernel size).
+    FLOAT    ///< Represents decimal numbers (e.g., Color tolerance).
 };
 
+/**
+ * @struct Property
+ * @brief Represents a single adjustable parameter for a rendering strategy.
+ * * Properties are dynamically exposed to the user interface (HUD) and can be 
+ * modified in real-time during video playback.
+ */
 struct Property
 {
-    std::string name;
-    PropertyType type;
-    float currentValue;
-    float step;
-    float minValue;
-    float maxValue;
+    std::string name;    ///< Display name of the property.
+    PropertyType type;   ///< Data type for correct UI formatting.
+    float currentValue;  ///< Current active value.
+    float step;          ///< Amount by which the value changes per user input.
+    float minValue;      ///< Minimum allowed value.
+    float maxValue;      ///< Maximum allowed value.
 
-    std::string toString() const
-    {
-        std::stringstream ss;
-        ss << "[ " << name << ": ";
-        
-        if (type == PropertyType::BOOLEAN)
-        {
-            ss << (currentValue > 0.5f ? "ON" : "OFF");
-        }
-        else if (type == PropertyType::INTEGER)
-        {
-            ss << static_cast<int>(currentValue);
-        }
-        else if (type == PropertyType::FLOAT)
-        {
-            ss << std::fixed << std::setprecision(1) << currentValue;
-        }
-        
-        ss << " ]  ";
-        return ss.str();
-    }
-void ShiftedValue(bool increase)
-{
-    if (increase)
-    {
-        currentValue += step;
-    }
-    else
-    {
-        currentValue -= step;
-    }
-    
-    // clamp the value
-    currentValue = std::clamp(currentValue, minValue, maxValue);
-}
+    /**
+     * @brief Formats the property into a UI-friendly string based on its type.
+     * @return Formatted string (e.g., "[ Hysteresis: ON ]").
+     */
+    std::string toString() const;
+
+    /**
+     * @brief Adjusts the current value by the defined step size.
+     * * Automatically clamps the result between minValue and maxValue.
+     * @param increase If true, value is increased; if false, value is decreased.
+     */
+    void ShiftedValue(bool increase);
 };

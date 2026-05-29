@@ -1,61 +1,40 @@
 #pragma once
 #include <memory>
 #include <vector>
-#include "Grayscale/NaiveGrayscaleStrategy.h"
-#include "Grayscale/PerceptualGrayscaleStrategy.h"
-#include "Grayscale/LightnessGrayscaleStrategy.h"
-#include "Grayscale/ValueGrayscaleStrategy.h"
-#include "EdgeDetections/SobelEdgeDetectionStrategy.h"
-#include "EdgeDetections/CannyEdgeDetectionStrategy.h"
-#include "EdgeDetections/ComicEdgeDetectionStrategy.h"
+#include <string>
+#include "strategies/IRenderStrategy.h"
 
+/**
+ * @class StrategiesFactory
+ * @brief Factory class for instantiating rendering strategies.
+ * * Follows the Factory Design Pattern to decouple the creation of specific 
+ * strategy objects from the classes that use them (like AsciiEngine).
+ */
 class StrategiesFactory
 {
 private:
-    inline static const std::vector<std::string> _strategies = {"Naive Grayscale",
-                                                                "Perceptual Grayscale",
-                                                                "Lightness Grayscale",
-                                                                "Value Grayscale",
-                                                                "Edge Detection (Sobel)",
-                                                                "Edge Detection (Canny)",
-                                                                "Edge/Grayscale (Comic)"};
+    inline static const std::vector<std::string> _strategies = {
+        "Naive Grayscale",
+        "Perceptual Grayscale",
+        "Lightness Grayscale",
+        "Value Grayscale",
+        "Edge Detection (Sobel)",
+        "Edge Detection (Canny)",
+        "Edge/Grayscale (Comic)"
+    };
 
 public:
-    static const std::vector<std::string> getAvailableStrategies()
-    {
-        return _strategies;
-    }
-    static std::unique_ptr<IRenderStrategy> createStrategy(const std::string &selecctedStrategy)
-    {
-        if (selecctedStrategy == _strategies[0])
-        {
-            return std::make_unique<NaiveGrayscaleStrategy>();
-        }
-        if (selecctedStrategy == _strategies[1])
-        {
-            return std::make_unique<PerceptualGrayscaleStrategy>();
-        }
-        if (selecctedStrategy == _strategies[2])
-        {
-            return std::make_unique<LightnessGrayscaleStrategy>();
-        }
-        if (selecctedStrategy == _strategies[3])
-        {
-            return std::make_unique<ValueGrayscaleStrategy>();
-        }
-        if (selecctedStrategy == _strategies[4])
-        {
-            return std::make_unique<SobelEdgeDetectionStrategy>();
-        }
-        if (selecctedStrategy == _strategies[5])
-        {
-            return std::make_unique<CannyEdgeDetectionStrategy>();
-        }
-        if (selecctedStrategy == _strategies[6])
-        {
-            return std::make_unique<ComicEdgeDetectionStrategy>();
-        }
+    /**
+     * @brief Returns a list of all available rendering strategies.
+     * @return Constant vector of strategy names suitable for UI dropdowns.
+     */
+    static const std::vector<std::string> getAvailableStrategies();
 
-        return std::make_unique<PerceptualGrayscaleStrategy>();
-    }
+    /**
+     * @brief Creates and returns a unique pointer to the requested rendering strategy.
+     * @param selectedStrategy The exact name of the strategy (matching the list).
+     * @return std::unique_ptr<IRenderStrategy> Polymorphic pointer to the created strategy.
+     * Defaults to PerceptualGrayscaleStrategy if the name is not found.
+     */
+    static std::unique_ptr<IRenderStrategy> createStrategy(const std::string &selectedStrategy);
 };

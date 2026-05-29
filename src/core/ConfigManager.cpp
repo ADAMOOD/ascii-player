@@ -1,0 +1,129 @@
+#include "core/ConfigManager.h"
+#include <iostream>
+#include <fstream>
+#include <filesystem>
+#include <algorithm>
+
+std::string ConfigManager::getValFromSettings(const std::string &key)
+{
+    if (!std::filesystem::exists(CONFIG_FILE))
+        return "";
+
+    std::ifstream fReader(CONFIG_FILE);
+    std::string line;
+    const std::string searched = key + "=";
+
+    while (std::getline(fReader, line))
+    {
+        if (line.compare(0, searched.length(), searched) == 0)
+        {
+            return line.substr(searched.length());
+        }
+    }
+    return "";
+}
+
+bool ConfigManager::setValToSettings(const std::string &key, const std::string &value)
+{
+    const std::string TEMP_FILE = "settings.tmp";
+    std::ifstream fReader(CONFIG_FILE);
+    std::ofstream fWriter(TEMP_FILE);
+
+    if (!fWriter.is_open())
+        return false;
+
+    bool found = false;
+    std::string line;
+    const std::string searched = key + "=";
+
+    if (fReader.is_open())
+    {
+        while (std::getline(fReader, line))
+        {
+            if (line.compare(0, searched.length(), searched) == 0)
+            {
+                fWriter << searched << value << "\n";
+                found = true;
+            }
+            else if (!line.empty())
+            {
+                fWriter << line << "\n";
+            }
+        }
+        fReader.close();
+    }
+
+    if (!found)
+    {
+        fWriter << searched << value << "\n";
+    }
+
+    fWriter.close();
+
+    try
+    {
+        if (std::filesystem::exists(CONFIG_FILE))
+        {
+            std::filesystem::remove(CONFIG_FILE);
+        }
+        std::filesystem::rename(TEMP_FILE, CONFIG_FILE);
+    }
+    catch (const std::filesystem::filesystem_error &e)
+    {
+        std::cerr << "[ERR] " << e.what() << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+bool ConfigManager::isSupportedVideoFormat(const std::string &extension)
+{
+    return std::find(allowed.begin(), allowed.end(), extension) != allowed.end();
+}
+
+bool ConfigManager::isValidVideoFile(const std::string &path)
+{
+    {
+        if (path.empty() || !std::filesystem::exists(path))
+            return false;
+        if (!std::filesystem::is_regular_file(path))
+            return false;
+        return isSupportedVideoFormat(std::filesystem::path(path).extension().string());
+    }
+}
+std::string ConfigManager::loadVideoPath()
+{
+    std::string val = getValFromSettings("video_path");
+    if (isValidVideoFile(val))
+        return val;
+    return "";
+}
+bool ConfigManager::saveVideoPath(const std::string &path)
+{
+    if (path == "webcam")
+    {
+        return setValToSettings("use_webcam", "true");
+    }
+    if (isValidVideoFile(path))
+    {
+        setValToSettings("use_webcam", "false");
+        return setValToSettings("video_path", path);
+    }
+    return false;
+}
+
+bool ConfigManager::GetUseWebcam()
+{
+    std::string webcam = getValFromSettings("use_webcam");
+    return webcam == "true" || webcam == "1";
+}
+
+bool ConfigManager::saveFillChar(const std::string &character)
+{
+    if (character.length() != 1)
+    {
+        return false;
+    }
+    return setValToSettings("fill_char", character);
+}

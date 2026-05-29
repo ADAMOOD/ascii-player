@@ -2,10 +2,11 @@
 #include <iostream>
 #include "core/ConfigManager.h"
 #include "strategies/StrategiesFactory.h"
+#include "strategies/EdgeDetections/BaseEdgeDetectionStrategy.h"
 #include "strategies/ImageUtilits.h"
 #include <opencv2/core/utils/logger.hpp>
 
-// --- MULTIPLATFORMNÍ MAGIE PRO TERMINÁL ---
+// --- OS dependent libraries  ---
 #ifdef _WIN32
     #include <windows.h>
     #include <conio.h>
@@ -16,10 +17,10 @@
 #endif
 // ------------------------------------------
 
-void enableRawMode()
+void AsciiEngine::enableRawMode()
 {
 #ifdef _WIN32
-    // Windows má raw mode vyřešený už funkcí _getch()
+    // windows has its own way of handling console input, so we don't need to mess with termios
 #else
     struct termios term;
     tcgetattr(STDIN_FILENO, &term);
@@ -30,7 +31,7 @@ void enableRawMode()
 #endif
 }
 
-void disableRawMode()
+void AsciiEngine::disableRawMode()
 {
 #ifndef _WIN32
     struct termios term;
@@ -76,7 +77,7 @@ bool AsciiEngine::init(const std::string &videoPath)
     m_cap.open(videoPath);
     if (!m_cap.isOpened())
     {
-        std::cerr << "Chyba: Nelze otevrit video: " << videoPath << std::endl;
+        std::cerr << "[ERROR] Could not open video file: [" << videoPath <<"]"<< std::endl;
         return false;
     }
     return setupEngineConfigs();
@@ -86,7 +87,7 @@ bool AsciiEngine::init()
 {
     m_isLiveStream = true;
 
-// --- MULTIPLATFORMNÍ VÝBĚR OVLADAČE KAMERY ---
+// --- multiplatform opening of webcam ---
 #ifdef _WIN32
     m_cap.open(0, cv::CAP_MSMF);
 #else
@@ -96,10 +97,10 @@ bool AsciiEngine::init()
 
     if (!m_cap.isOpened())
     {
-        std::cerr << "Chyba: Nelze otevrit webkameru." << std::endl;
+        std::cerr << "[ERROR] Could not open webcam. Check connection." << std::endl;
         return false;
     }
-
+    // --- setting webcam properties ---
     m_cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
     m_cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
     m_cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
@@ -112,12 +113,15 @@ bool AsciiEngine::init()
 
 void AsciiEngine::updateTerminalSize()
 {
+    // --- multiplatform terminal size fetching ---
+    //windows returns the size of the whole console buffer, so we have to calculate the actual visible area
+     
 #ifdef _WIN32
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
     int termW = csbi.srWindow.Right - csbi.srWindow.Left;
     int termH = csbi.srWindow.Bottom - csbi.srWindow.Top;
-#else
+#else//linux ioctl gives us the visible area right away
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
     int termW = w.ws_col - 1;
@@ -340,7 +344,7 @@ void AsciiEngine::renderBuffer()
 
 void AsciiEngine::syncFramerate()
 {
-    // Zde bude tvá synchronizace
+    // this will be implemented in the future to sync with the video's original framerate
     std::this_thread::sleep_for(std::chrono::milliseconds(33));
 }
 
@@ -349,7 +353,7 @@ void AsciiEngine::checkUserInput()
     char c = 0;
     bool hasInput = false;
 
-// --- MULTIPLATFORMNÍ VSTUP Z KLÁVESNICE ---
+// --- MULTIPLATFORM ---
 #ifdef _WIN32
     if (_kbhit())
     {

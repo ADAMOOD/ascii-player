@@ -1,11 +1,12 @@
 #pragma once
-#include <iostream>
-#include <fstream>
 #include <string>
-#include <filesystem>
 #include <vector>
-#include <algorithm>
 
+/**
+ * @class ConfigManager
+ * @brief Static utility class for managing application configuration via a local text file.
+ * * Handles reading and writing user preferences like video paths, FPS, and rendering strategies.
+ */
 class ConfigManager
 {
 private:
@@ -13,125 +14,58 @@ private:
     inline static const std::vector<std::string> allowed = {".mp4", ".mov", ".avi"};
 
 public:
-    static std::string getValFromSettings(const std::string &key)
-    {
-        if (!std::filesystem::exists(CONFIG_FILE))
-            return "";
+    /**
+     * @brief Retrieves a specific configuration value by its key.
+     * @param key The setting key to search for (e.g., "target_fps").
+     * @return The value associated with the key, or an empty string if not found.
+     */
+    static std::string getValFromSettings(const std::string &key);
 
-        std::ifstream fReader(CONFIG_FILE);
-        std::string line;
-        const std::string searched = key + "=";
+    /**
+     * @brief Saves or updates a key-value pair in the configuration file.
+     * @param key The setting key to save.
+     * @param value The value to associate with the key.
+     * @return true if the setting was successfully saved, false otherwise.
+     */
+    static bool setValToSettings(const std::string &key, const std::string &value);
 
-        while (std::getline(fReader, line))
-        {
-            if (line.compare(0, searched.length(), searched) == 0)
-            {
-                return line.substr(searched.length());
-            }
-        }
-        return "";
-    }
+    /**
+     * @brief Checks if the provided file extension is supported by the engine.
+     * @param extension The file extension including the dot (e.g., ".mp4").
+     * @return true if the format is supported.
+     */
+    static bool isSupportedVideoFormat(const std::string &extension);
 
-    static bool setValToSettings(const std::string &key, const std::string &value)
-    {
-        const std::string TEMP_FILE = "settings.tmp";
-        std::ifstream fReader(CONFIG_FILE);
-        std::ofstream fWriter(TEMP_FILE);
+    /**
+     * @brief Validates if the given file path exists, is a regular file, and has a supported format.
+     * @param path Absolute or relative path to the video file.
+     * @return true if the file is a valid and supported video.
+     */
+    static bool isValidVideoFile(const std::string &path);
 
-        if (!fWriter.is_open())
-            return false;
+    /**
+     * @brief Loads the last used video path from the settings file.
+     * @return The validated file path, or an empty string if invalid/missing.
+     */
+    static std::string loadVideoPath();
 
-        bool found = false;
-        std::string line;
-        const std::string searched = key + "=";
+    /**
+     * @brief Saves the video path to settings. Handles the special "webcam" keyword.
+     * @param path The path to save, or "webcam" to switch to live feed mode.
+     * @return true if successfully saved.
+     */
+    static bool saveVideoPath(const std::string &path);
 
-        if (fReader.is_open())
-        {
-            while (std::getline(fReader, line))
-            {
-                if (line.compare(0, searched.length(), searched) == 0)
-                {
-                    fWriter << searched << value << "\n";
-                    found = true;
-                }
-                else if (!line.empty())
-                {
-                    fWriter << line << "\n";
-                }
-            }
-            fReader.close();
-        }
+    /**
+     * @brief Checks if the user is currently set to use the webcam.
+     * @return true if webcam mode is enabled.
+     */
+    static bool GetUseWebcam();
 
-        if (!found)
-        {
-            fWriter << searched << value << "\n";
-        }
-
-        fWriter.close();
-
-        try
-        {
-            if (std::filesystem::exists(CONFIG_FILE))
-            {
-                std::filesystem::remove(CONFIG_FILE);
-            }
-            std::filesystem::rename(TEMP_FILE, CONFIG_FILE);
-        }
-        catch (const std::filesystem::filesystem_error &e)
-        {
-            std::cerr << "[ERR] " << e.what() << std::endl;
-            return false;
-        }
-
-        return true;
-    }
-
-    static bool isSupportedVideoFormat(const std::string &extension)
-    {
-        return std::find(allowed.begin(), allowed.end(), extension) != allowed.end();
-    }
-
-    static bool isValidVideoFile(const std::string &path)
-    {
-        if (path.empty() || !std::filesystem::exists(path))
-            return false;
-        if (!std::filesystem::is_regular_file(path))
-            return false;
-        return isSupportedVideoFormat(std::filesystem::path(path).extension().string());
-    }
-
-    static std::string loadVideoPath()
-    {
-        std::string val = getValFromSettings("video_path");
-        if (isValidVideoFile(val))
-            return val;
-        return "";
-    }
-
-    static bool saveVideoPath(const std::string &path)
-    {
-        if(path == "webcam")
-        {
-           return setValToSettings("use_webcam","true");
-        }
-        if (isValidVideoFile(path))
-        {
-            setValToSettings("use_webcam","false");
-            return setValToSettings("video_path", path);
-        }
-        return false;
-    }
-    static bool GetUseWebcam()
-    {
-        std::string webcam = getValFromSettings("use_webcam");
-        return webcam == "true" || webcam == "1";
-    }
-    static bool saveFillChar(const std::string &character)
-    {
-        if(character.length()!=1)
-        {
-            return false;
-        }
-        return setValToSettings("fill_char",character);
-    }
+    /**
+     * @brief Saves the character used for filling edge detection areas.
+     * @param character A single-character string.
+     * @return true if saved successfully, false if the string length is not exactly 1.
+     */
+    static bool saveFillChar(const std::string &character);
 };

@@ -1,18 +1,18 @@
 #include "ui/SettingsScreen.h"
-#include "ui/Tui.h"           // TOHLE TI TAM CHYBĚLO!
+#include "ui/Tui.h"
 #include <filesystem>
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
 
-
-
 bool SettingsScreen::save()
 {
     bool success = true;
-    if (m_use_webcam) success &= ConfigManager::saveVideoPath("webcam");
-    else success &= ConfigManager::saveVideoPath(this->m_videoPath);
+    if (m_use_webcam)
+        success &= ConfigManager::saveVideoPath("webcam");
+    else
+        success &= ConfigManager::saveVideoPath(this->m_videoPath);
 
     success &= ConfigManager::setValToSettings("target_fps", m_target_fps);
     success &= ConfigManager::setValToSettings("render_strategy", m_allStrategies[this->m_selectedStrategyIndex]);
@@ -20,15 +20,14 @@ bool SettingsScreen::save()
     return success;
 }
 
-void SettingsScreen::show(Tui& tui)
+void SettingsScreen::show(Tui &tui)
 {
     using namespace ftxui;
 
-    // VŠE MUSÍ BÝT VE SMYČCE
     while (true)
     {
         auto screen = ScreenInteractive::Fullscreen();
-        bool openExplorer = false; // Vlajka pro tlačítko
+        bool openExplorer = false;
         int selectedIndexMenu = 0;
         std::vector<std::string> menuEntries = {"Save settings", "Back to main menu"};
         MenuOption menuOption;
@@ -38,8 +37,10 @@ void SettingsScreen::show(Tui& tui)
         {
             if (selectedIndexMenu == 0)
             {
-                if (save()) statusMessage = "Success: Settings saved!";
-                else statusMessage = "Error: Invalid FPS or File path!";
+                if (save())
+                    statusMessage = "Success: Settings saved!";
+                else
+                    statusMessage = "Error: Invalid parameters. Please check your inputs.";
             }
             else if (selectedIndexMenu == 1)
             {
@@ -47,15 +48,12 @@ void SettingsScreen::show(Tui& tui)
             }
         };
 
-        // --- KOMPONENTY ---
+        // --- COMPONENTS (LOGIC) ---
         Component inputPath = Input(&m_videoPath, "please select a video file");
-        
-        // TLAČÍTKO JEN ZVEDNE VLAJKU A ZAVŘE MENU
-        Component browseButton = Button("Choose video from explorer", [&] {
+        Component browseButton = Button("Choose video from explorer", [&]
+                                        {
             openExplorer = true;
-            screen.ExitLoopClosure()(); 
-        });
-
+            screen.ExitLoopClosure()(); });
         Component inputFps = Input(&m_target_fps, "please enter target FPS");
         Component inputChar = Input(&m_fill_char, "please enter fill character for edge strategies");
         Component strategyDropdown = Dropdown(&m_allStrategies, &m_selectedStrategyIndex);
@@ -66,16 +64,16 @@ void SettingsScreen::show(Tui& tui)
         {
             auto prefix = ftxui::text(s.state ? "[X] " : "[ ] ");
             auto t = ftxui::text(s.label);
-            if (s.active) t |= ftxui::inverted;
+            if (s.active)
+                t |= ftxui::inverted;
             return ftxui::hbox({prefix, t});
         };
 
         Component webcamCheckbox = Checkbox("Use webcam as a video source", &m_use_webcam, cbOpt);
 
-        // --- KONTEJNER (Teď už i s tlačítkem) ---
         auto container = Container::Vertical({
             inputPath,
-            browseButton, // Přidáno sem!
+            browseButton,
             webcamCheckbox,
             inputFps,
             inputChar,
@@ -83,8 +81,9 @@ void SettingsScreen::show(Tui& tui)
             menuButtons,
         });
 
-        // --- VYKRESLENÍ ---
-        auto renderer = Renderer(container, [&] {    
+        // --- RENDERER ---
+        auto renderer = Renderer(container, [&]
+                                 {    
             Element videoRow = hbox({text(" Video:          ") | color(Color::GrayLight), inputPath->Render()});
             Element browseRow = hbox({text("                 "), browseButton->Render()}); // Odsazení pro tlačítko
             Element webcamRow = hbox({text(" Webcam:         ") | color(Color::GrayLight), webcamCheckbox->Render()});
@@ -94,7 +93,7 @@ void SettingsScreen::show(Tui& tui)
             
             Element content = vbox({
                 videoRow,
-                browseRow, // Přidáno sem!
+                browseRow,
                 webcamRow,
                 fpsRow,
                 charRow,
@@ -105,20 +104,20 @@ void SettingsScreen::show(Tui& tui)
                 menuButtons->Render(),
             });
             
-            return window(text(" Settings ") | bold | center, content) | center; 
-        });
+            return window(text(" Settings ") | bold | center, content) | center; });
 
-        // Zamrzne a čeká na uživatele
+        // loop for user interaction with the settings screen
         screen.Loop(renderer);
 
-        // --- CO SE STANE PO ZAVŘENÍ OKNA ---
+        //-- AFTER LOOP (WHEN USER EXITS THE SETTINGS SCREEN) ---
+
         if (openExplorer)
         {
             std::string startDir = "./";
-            if (!m_videoPath.empty()) 
+            if (!m_videoPath.empty())
             {
                 std::filesystem::path p(m_videoPath);
-                if (p.has_parent_path() && std::filesystem::exists(p.parent_path())) 
+                if (p.has_parent_path() && std::filesystem::exists(p.parent_path()))
                 {
                     startDir = p.parent_path().string();
                 }
@@ -126,22 +125,20 @@ void SettingsScreen::show(Tui& tui)
 
             // Zavoláme explorer z Tui
             std::string selectedFile = tui.showFileExplorer(startDir);
-            
-            if (!selectedFile.empty()) 
+
+            if (!selectedFile.empty())
             {
-                m_videoPath = selectedFile; // Přepíšeme cestu
+                m_videoPath = selectedFile;
             }
-            // Záměrně tu není break -> smyčka while(true) se otočí a okno se ukáže s novou cestou!
         }
         else
         {
-            // Bylo zmáčknuto Back To Menu (nebo ESC), jdeme úplně pryč
+            // escape or Back to main menu was selected
             break;
         }
     }
 }
 
-// Konstruktor zůstává úplně stejný, jak jsi ho měl ty!
 SettingsScreen::SettingsScreen()
 {
     this->m_allStrategies = StrategiesFactory::getAvailableStrategies();
