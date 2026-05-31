@@ -2,10 +2,8 @@
 
 std::vector<Property> AdvancedEdgeDetectionStrategy::getProperties()
 {
-    // 1. Získej properties z Base (Kernel, Sobel Boost)
     auto props = BaseEdgeDetectionStrategy::getProperties();
 
-    // 2. Přidej Hysteresis properties
     props.push_back({"Hysteresis", PropertyType::BOOLEAN, m_useHysteresis ? 1.0f : 0.0f, 1.0f, 0.0f, 1.0f});
     if (m_useHysteresis)
     {
@@ -24,7 +22,7 @@ void AdvancedEdgeDetectionStrategy::setProperty(const Property property)
     else if (property.name == "Hysteresis High")
         m_highThreshold = property.currentValue;
     else
-        BaseEdgeDetectionStrategy::setProperty(property); // Pošli to o patro výš
+        BaseEdgeDetectionStrategy::setProperty(property);
 }
 
 void AdvancedEdgeDetectionStrategy::render(const cv::Mat &inputFrame, std::vector<ImageUtils::Pixel> &outBuffer, int width, int height)
@@ -34,14 +32,14 @@ void AdvancedEdgeDetectionStrategy::render(const cv::Mat &inputFrame, std::vecto
     cv::Mat angles = cv::Mat::zeros(height, width, CV_32F);
     cv::Mat coloredResizedFrame = cv::Mat::zeros(height, width, CV_8UC3);
     
-    // 1. Získáme předzpracovaná data od Base
+    //first step is the same as in the base class, so we can reuse it to get the initial magnitudes and angles
     generateBaseEdgeData(inputFrame, grayFrame, coloredResizedFrame, magnitudes, angles, width, height);
 
-    // 2. Aplikujeme NMS
+    // NMS
     cv::Mat nmsMagnitudes = cv::Mat::zeros(height, width, CV_32F);
     applyNonMaximumSuppression(magnitudes, angles, nmsMagnitudes, width, height);
 
-    // 3. Aplikujeme Hysterezi (volitelně)
+    // Hysteresis Thresholding (optional)
     if (m_useHysteresis)
     {
         cv::Mat hysteresisResult = cv::Mat::zeros(height, width, CV_32F);
@@ -49,7 +47,7 @@ void AdvancedEdgeDetectionStrategy::render(const cv::Mat &inputFrame, std::vecto
         nmsMagnitudes = hysteresisResult;
     }
 
-    // 4. Kreslení
+    // rendering loop - we still delegate the character decision to the child class, but now we have the option to use the refined nmsMagnitudes and angles for better edge representation
     for (int y = 0; y < height; y++)
     {
         for (int x = 0; x < width; x++)
@@ -66,7 +64,7 @@ void AdvancedEdgeDetectionStrategy::render(const cv::Mat &inputFrame, std::vecto
             float mag = nmsMagnitudes.at<float>(y, x);
             float angle = angles.at<float>(y, x);
 
-            // DELEGUJEME ROZHODNUTÍ NA POTOMKA!
+            // Delegating the character decision to the child class's implementation of determinePixelChar
             outBuffer[bufferIndex] = {determinePixelChar(x, y, mag, angle, nmsMagnitudes, angles, grayFrame), color, {0, 0, 0}};
         }
     }

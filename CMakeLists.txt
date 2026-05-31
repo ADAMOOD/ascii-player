@@ -4,24 +4,24 @@ project(AsciiPlayer)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Globální ošetření kompilátorů (Windows MSVC vs Linux GCC)
+# Global compiler flags for warnings and optimizations
 if(MSVC)
     add_compile_definitions(NOMINMAX)
-    # Přidána maximální optimalizace rychlosti a agresivní matematika pro OpenCV
+    # Maximum warning level and optimization flags for MSVC
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /O2 /Ot /Oi /fp:fast")
 else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O3")
 endif()
 
-# OpenCV se najde všude (na Win přes vcpkg, na Linuxu přes apt-get)
+# On linux, we need to link against pthread for threading support (used by FTXUI and our own threading)
 find_package(OpenCV REQUIRED)
 
-# --- CHYTRÁ VÝHYBKA PRO FTXUI ---
+# --- FTXUI ---
 if(WIN32)
-    # Na Windows už ho máme zkompilovaný z vcpkg
+    # On windows the user is expected to have FTXUI installed and available via CMake's find_package
     find_package(ftxui CONFIG REQUIRED)
 else()
-    # Na Linuxu si ho CMake stáhne sám z GitHubu, přesně jak jsi zvyklý
+    # On linux we can use FetchContent to automatically download and build FTXUI as part of our build process
     include(FetchContent)
     FetchContent_Declare(ftxui
       GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI
@@ -29,17 +29,18 @@ else()
     )
     FetchContent_MakeAvailable(ftxui)
 endif()
-# --------------------------------
 
 set(SOURCES 
     src/main.cpp 
+
     src/core/AsciiEngine.cpp
     src/core/ConfigManager.cpp
+
     src/ui/Tui.cpp
     src/ui/Property.cpp
-    src/strategies/StrategiesFactory.cpp
     src/strategies/ImageUtilits.cpp
-
+    
+    src/strategies/StrategiesFactory.cpp
     src/strategies/AbstractRenderStrategy.cpp
     src/strategies/Grayscale/BaseGrayscaleStrategy.cpp
     src/strategies/EdgeDetections/BaseEdgeDetectionStrategy.cpp

@@ -50,7 +50,6 @@ namespace ImageUtils
         return diff > diffTreashold;
     }
 
-    // --- VELKÉ FUNKCE SE JEN DEKLARUJÍ (Bez slova inline!) ---
 
     /**
      * @brief Retrieves a pre-computed 8-bit ANSI color escape code from a cache.

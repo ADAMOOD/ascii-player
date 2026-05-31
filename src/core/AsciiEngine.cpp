@@ -15,7 +15,6 @@
     #include <unistd.h>
     #include <sys/ioctl.h>
 #endif
-// ------------------------------------------
 
 void AsciiEngine::enableRawMode()
 {
@@ -369,7 +368,7 @@ void AsciiEngine::checkUserInput()
         hasInput = true;
     }
 #endif
-// ------------------------------------------
+
 
     if (hasInput)
     {

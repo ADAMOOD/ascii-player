@@ -1,5 +1,5 @@
 #include "strategies/ImageUtilits.h"
-#include <cmath> // pro std::round, std::abs
+#include <cmath> 
 
 namespace ImageUtils
 {
@@ -24,7 +24,6 @@ namespace ImageUtils
 
             for (int x = 0; x < width; x++)
             {
-                // Tady přečteš barvy přímo z pointeru
                 uchar b = srcRow[x][0];
                 uchar g = srcRow[x][1];
                 uchar r = srcRow[x][2];
@@ -39,7 +38,7 @@ namespace ImageUtils
 
     void applyFilter(const cv::Mat &src, cv::Mat &dst, const cv::Mat &kernel, int width, int height)
     {
-        // 1. U 1D kernelu nás zajímá počet sloupců (cols), ne řádků!
+        // 1d kernel, odd size, e.g. 3, 5, 7
         int halfSize = kernel.cols / 2;
 
         int paddedWidth = width + (2 * halfSize);
@@ -47,10 +46,9 @@ namespace ImageUtils
 
         cv::Mat paddedSrc = cv::Mat::zeros(paddedHeight, paddedWidth, CV_8UC1);
 
-        // TATO MATICE MUSÍ BÝT FLOAT (32F) a musí být PADDED (velká), aby vertikální průchod nespadl!
         cv::Mat tempFrame = cv::Mat::zeros(paddedHeight, paddedWidth, CV_32FC1);
 
-        // 2. Vycpání (Padding) - Tvůj kód s clamp je skvělý, nech ho tu.
+        // Padding: copy src into the center of paddedSrc, replicating border pixels
         for (int y = 0; y < paddedHeight; y++)
         {
             for (int x = 0; x < paddedWidth; x++)
@@ -61,35 +59,35 @@ namespace ImageUtils
             }
         }
 
-        // 3. HORIZONTÁLNÍ ROZMAZÁNÍ (čte uchar z paddedSrc, zapisuje float do tempFrame)
-        for (int y = 0; y < paddedHeight; y++) // Procházíme celou výšku
+        // Horizontal blur (read uchar from paddedSrc, write float to tempFrame)
+        for (int y = 0; y < paddedHeight; y++)
         {
-            for (int x = halfSize; x < paddedWidth - halfSize; x++) // Vynecháme úplné okraje šířky
+            for (int x = halfSize; x < paddedWidth - halfSize; x++)//Border handling: only process pixels that have a full kernel around them
             {
                 float val = 0.0f;
                 for (int k = -halfSize; k <= halfSize; k++)
                 {
-                    // Měníme jen osu X! Kernel má indexaci (0, k + halfSize)
+                    //Only change the X coordinate for horizontal blur (x + k)
                     val += paddedSrc.at<uchar>(y, x + k) * kernel.at<float>(0, k + halfSize);
                 }
                 tempFrame.at<float>(y, x) = val;
             }
         }
 
-        // 4. VERTIKÁLNÍ ROZMAZÁNÍ (čte float z tempFrame, zapisuje uchar do dst)
+        // Vertical blur (read float from tempFrame, write uchar to dst)
         for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
             {
                 float val = 0.0f;
 
-                // Přepočet indexu z originálu (i, j) na vycpanou matici
+                // recalculate padded coordinates for the original image pixel (i,j)
                 int paddedY = i + halfSize;
                 int paddedX = j + halfSize;
 
                 for (int k = -halfSize; k <= halfSize; k++)
                 {
-                    // Měníme jen osu Y! (paddedY + k)
+                    // Only change the Y coordinate for vertical blur (paddedY + k)
                     val += tempFrame.at<float>(paddedY + k, paddedX) * kernel.at<float>(0, k + halfSize);
                 }
 
