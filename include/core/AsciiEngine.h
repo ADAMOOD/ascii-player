@@ -47,7 +47,6 @@ public:
     void play();
 
 private:
-private:
     cv::VideoCapture m_cap;                  ///< OpenCV video capture object (handles both files and webcam).
     std::vector<ImageUtils::Pixel> m_frameBuffer; ///< 1D array representing the 2D terminal screen.
     int m_width;                             ///< Current terminal width in characters.
@@ -58,7 +57,6 @@ private:
     double m_aspectRatio;                    ///< Original aspect ratio of the video source.
 
     //producer-consumer synchronization
-    std::condition_variable m_frameDone;     ///< (Deprecated/Unused) Can be removed if not used.
     std::atomic<bool> m_isRunning;           ///< Atomic flag indicating if the playback is currently active.
     std::condition_variable m_frameReady;    ///< Signaled when a new frame is added to the queue.
     std::condition_variable m_queueNotFull;  ///< Signaled when a frame is popped, meaning space is available.

@@ -18,7 +18,7 @@ generateBaseEdgeData(inputFrame, coloredResizedFrame, magnitudes, angles, width,
                 
                 if (x == 0 || y == 0 || x == width - 1 || y == height - 1)
                 {
-                    outBuffer[bufferIndex] = {' ',{0,0,0}, color};
+                    outBuffer[bufferIndex] = {' ', color, {0,0,0}};
                     continue;
                 }
 

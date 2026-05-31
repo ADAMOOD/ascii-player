@@ -20,7 +20,10 @@
 void AsciiEngine::enableRawMode()
 {
 #ifdef _WIN32
-    // windows has its own way of handling console input, so we don't need to mess with termios
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD dwMode = 0;
+    GetConsoleMode(hOut, &dwMode);
+    SetConsoleMode(hOut, dwMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 #else
     struct termios term;
     tcgetattr(STDIN_FILENO, &term);
@@ -114,8 +117,7 @@ bool AsciiEngine::init()
 void AsciiEngine::updateTerminalSize()
 {
     // --- multiplatform terminal size fetching ---
-    //windows returns the size of the whole console buffer, so we have to calculate the actual visible area
-     
+    //windows returns the size of the whole console buffer, so we have to calculate the actual visible area   
 #ifdef _WIN32
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
@@ -142,6 +144,7 @@ void AsciiEngine::updateTerminalSize()
         m_width = newWidth;
         m_height = newHeight;
         m_frameBuffer.assign(m_width * m_height, {' ', {0, 0, 0}, {0, 0, 0}});
+        std::cout << "\x1b[2J" << std::flush;
     }
 }
 

@@ -19,7 +19,7 @@ public:
      * @param b blue channel value (0-255)
      * @return uchar value representing the grayscale brightness (0-255)
      */
-    uchar calculateBrightness(uchar r, uchar g, uchar b)
+    uchar calculateBrightness(uchar r, uchar g, uchar b)override
     {
         return static_cast<uchar>((r + g + b) / 3);
     }
