@@ -1,33 +1,32 @@
 #pragma once
-#include "../IRenderStrategy.h"
+#include "strategies/AbstractRenderStrategy.h"
+#include <string>
 
-class BaseGrayscaleStrategy : public IRenderStrategy
+/**
+ * @class BaseGrayscaleStrategy
+ * @brief Base class for all grayscale-based ASCII rendering strategies.
+ * * Handles the common logic of resizing the frame and mapping a calculated 
+ * brightness value to a character from the ASCII ramp. Subclasses only need 
+ * to define the math for calculating that brightness.
+ */
+class BaseGrayscaleStrategy : public AbstractRenderStrategy
 {
 private:
     std::string m_asciiChars = " .:-=+*#%@";
 
 public:
-    void render(const cv::Mat &inputFrame, std::vector<ImageUtils::Pixel> &outBuffer, int width, int height)
-    {
-        cv::Mat resizedFrame;
-        cv::resize(inputFrame, resizedFrame, cv::Size(width, height));
+    /**
+     * @brief Resizes the frame and converts pixels to ASCII using subclass brightness logic.
+     */
+    void render(const cv::Mat &inputFrame, std::vector<ImageUtils::Pixel> &outBuffer, int width, int height) override;
 
-        // Musíme změnit velikost bufferu, pokud nebyla správná
-        outBuffer.resize(width * height);
-
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                cv::Vec3b pixel = resizedFrame.at<cv::Vec3b>(y, x);
-                uchar brightness = calculateBrightness(pixel[2], pixel[1], pixel[0]);
-
-                int charIndex = (brightness * (m_asciiChars.length() - 1)) / 255;
-
-                // Teď plníš Pixel strukturu
-                outBuffer[y * width + x] = {m_asciiChars[charIndex], pixel,{0,0,0}};
-            }
-        }
-    }
+protected:
+    /**
+     * @brief Pure virtual function to calculate brightness. Implemented by subclasses.
+     * @param r Red channel value (0-255).
+     * @param g Green channel value (0-255).
+     * @param b Blue channel value (0-255).
+     * @return Calculated grayscale brightness (0-255).
+     */
     virtual uchar calculateBrightness(uchar r, uchar g, uchar b) = 0;
 };

@@ -1,17 +1,31 @@
 #pragma once
-#include "AdvancedEdgeDetectionStrategy.h"
+#include "strategies/EdgeDetections/AdvancedEdgeDetectionStrategy.h"
 
+/**
+ * @class CannyEdgeDetectionStrategy
+ * @brief Implements character mapping for Canny edge detection.
+ * * Uses gradient angles to map strong edges to directional ASCII characters.
+ */
 class CannyEdgeDetectionStrategy : public AdvancedEdgeDetectionStrategy
 {
 private:
-
-
 public:
-char determinePixelChar(int /*x*/, int /*y*/, float mag, float angle, const cv::Mat& /*allMagnitudes*/, const cv::Mat& /*allAngles*/, const cv::Mat& /*grayFrame*/) override
+    std::vector<Property> getProperties() override
     {
-        if (mag >= 50.0f) 
+        auto props = AdvancedEdgeDetectionStrategy::getProperties();
+        return props;
+    }
+
+    void setProperty(const Property property) override
+    {
+        AdvancedEdgeDetectionStrategy::setProperty(property);
+    }
+
+    char determinePixelChar(int /*x*/, int /*y*/, float mag, float angle, const cv::Mat & /*allMagnitudes*/, const cv::Mat & /*allAngles*/, const cv::Mat & /*grayFrame*/) override
+    {
+        if (mag >= m_edgeThreshold)
         {
-            return getAsciiForAngle(angle); 
+            return getAsciiForAngle(angle);
         }
         return m_fillChar;
     }

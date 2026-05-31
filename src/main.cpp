@@ -1,6 +1,6 @@
 /**
  * @file main.cpp
- * @brief Entry point for the ARTSCII application.
+ * @brief
  * * Initializes the user interface, handles the main menu loop, and manages 
  * the lifecycle of the AsciiEngine for both video files and webcam input.
  */

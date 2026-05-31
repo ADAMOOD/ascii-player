@@ -1,162 +1,77 @@
 #pragma once
-#include "BaseEdgeDetectionStrategy.h"
+#include "strategies/EdgeDetections/BaseEdgeDetectionStrategy.h"
 
+/**
+ * @class AdvancedEdgeDetectionStrategy
+ * @brief Extends basic Sobel edge detection with advanced Canny-like features.
+ * * Adds Non-Maximum Suppression (NMS) to thin edges to a single pixel width, 
+ * and optional Hysteresis thresholding to connect weak edges to strong ones.
+ * Serves as a base class for specific advanced edge renderers.
+ */
 class AdvancedEdgeDetectionStrategy : public BaseEdgeDetectionStrategy
 {
 protected:
-    bool m_useHysteresis = false;
-    float m_lowThreshold = 30.0f;
-    float m_highThreshold = 100.0f;
+    bool m_useHysteresis = false;   ///< Toggles hysteresis thresholding ON/OFF.
+    float m_lowThreshold = 30.0f;   ///< Lower bound for weak edge candidates.
+    float m_highThreshold = 100.0f; ///< Upper bound for strong, definite edges.
 
 public:
-    std::vector<Property> getProperties() override
-    {
-        // 1. Získej properties z Base (Kernel, Sobel Boost)
-        auto props = BaseEdgeDetectionStrategy::getProperties();
+    /**
+     * @brief Appends hysteresis settings to the base edge detection properties.
+     */
+    std::vector<Property> getProperties() override;
 
-        // 2. Přidej Hysteresis properties
-        props.push_back({"Hysteresis", PropertyType::BOOLEAN, m_useHysteresis ? 1.0f : 0.0f, 1.0f, 0.0f, 1.0f});
-        if (m_useHysteresis)
-        {
-            props.push_back({"Hysteresis Low", PropertyType::FLOAT, m_lowThreshold, 5.0f, 0.0f, 255.0f});
-            props.push_back({"Hysteresis High", PropertyType::FLOAT, m_highThreshold, 5.0f, 0.0f, 255.0f});
-        }
-        return props;
-    }
+    /**
+     * @brief Handles updates for hysteresis settings, passing others to the base class.
+     */
+    void setProperty(const Property property) override;
 
-    void setProperty(const Property property) override
-    {
-        // Obsluž své vlastnosti
-        if (property.name == "Hysteresis")
-            m_useHysteresis = (property.currentValue > 0.5f);
-        else if (property.name == "Hysteresis Low")
-            m_lowThreshold = property.currentValue;
-        else if (property.name == "Hysteresis High")
-            m_highThreshold = property.currentValue;
-        // Pokud to neznáš, pošli to o patro výš
-        else
-            BaseEdgeDetectionStrategy::setProperty(property);
-    }
-
-    void render(const cv::Mat &inputFrame, std::vector<ImageUtils::Pixel> &outBuffer, int width, int height) override
-    {
-        cv::Mat grayFrame = cv::Mat::zeros(height, width, CV_8UC1);
-        cv::Mat magnitudes = cv::Mat::zeros(height, width, CV_32F);
-        cv::Mat angles = cv::Mat::zeros(height, width, CV_32F);
-        cv::Mat coloredResizedFrame = cv::Mat::zeros(height, width, CV_8UC3);
-        // 1. Získáme předzpracovaná data od Base
-        generateBaseEdgeData(inputFrame, grayFrame,coloredResizedFrame, magnitudes, angles, width, height);
-
-        // 2. Aplikujeme NMS a Hysterezi
-        cv::Mat nmsMagnitudes = cv::Mat::zeros(height, width, CV_32F);
-        applyNonMaximumSuppression(magnitudes, angles, nmsMagnitudes, width, height);
-
-        if (m_useHysteresis)
-        {
-            cv::Mat hysteresisResult = cv::Mat::zeros(height, width, CV_32F);
-            applyHysteresis(nmsMagnitudes, hysteresisResult, width, height, m_lowThreshold, m_highThreshold);
-            nmsMagnitudes = hysteresisResult;
-        }
-
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                int bufferIndex = y * width + x;
-                cv::Vec3b color = coloredResizedFrame.at<cv::Vec3b>(y,x);
-
-                if (x == 0 || y == 0 || x == width - 1 || y == height - 1)
-                {
-                    outBuffer[bufferIndex] = {' ', color,{0, 0, 0}};
-                    continue;
-                }
-
-                float mag = nmsMagnitudes.at<float>(y, x);
-                float angle = angles.at<float>(y, x);
-
-                // DELEGUJEME ROZHODNUTÍ NA POTOMKA!
-                outBuffer[bufferIndex] = {determinePixelChar(x, y, mag, angle, nmsMagnitudes, angles, grayFrame),color, {0, 0, 0}};;
-            }
-        }
-    }
+    /**
+     * @brief Executes the advanced edge detection pipeline (Base -> NMS -> Hysteresis).
+     */
+    void render(const cv::Mat &inputFrame, std::vector<ImageUtils::Pixel> &outBuffer, int width, int height) override;
 
 protected:
+    /**
+     * @brief Pure virtual hook for child classes to define specific ASCII characters for edges.
+     * @param x X coordinate.
+     * @param y Y coordinate.
+     * @param mag Filtered gradient magnitude.
+     * @param angle Gradient angle.
+     * @param allMagnitudes The full matrix of magnitudes for neighbor checking.
+     * @param allAngles The full matrix of angles for neighbor checking.
+     * @param grayFrame The original grayscale frame for shading.
+     * @return The chosen ASCII character.
+     */
     virtual char determinePixelChar(int x, int y, float mag, float angle, const cv::Mat &allMagnitudes, const cv::Mat &allAngles, const cv::Mat &grayFrame) = 0;
-    void applyNonMaximumSuppression(const cv::Mat &magnitudes, const cv::Mat &angles, cv::Mat &dst, int width, int height)
-    {
-        for (int y = 1; y < height - 1; y++)
-        {
-            for (int x = 1; x < width - 1; x++)
-            {
-                float mag = magnitudes.at<float>(y, x);
-                float angle = angles.at<float>(y, x);
-                float neighbor1 = 0, neighbor2 = 0;
-                if ((angle >= 0 && angle < 22.5) || (angle >= 157.5 && angle <= 180))
-                {
-                    neighbor1 = magnitudes.at<float>(y, x + 1);
-                    neighbor2 = magnitudes.at<float>(y, x - 1);
-                }
-                else if (angle >= 22.5 && angle < 67.5)
-                {
-                    neighbor1 = magnitudes.at<float>(y + 1, x - 1);
-                    neighbor2 = magnitudes.at<float>(y - 1, x + 1);
-                }
-                else if (angle >= 67.5 && angle < 112.5)
-                {
-                    neighbor1 = magnitudes.at<float>(y + 1, x);
-                    neighbor2 = magnitudes.at<float>(y - 1, x);
-                }
-                else if (angle >= 112.5 && angle < 157.5)
-                {
-                    neighbor1 = magnitudes.at<float>(y - 1, x - 1);
-                    neighbor2 = magnitudes.at<float>(y + 1, x + 1);
-                }
-                if (mag >= neighbor1 && mag >= neighbor2)
-                {
-                    dst.at<float>(y, x) = mag;
-                }
-            }
-        }
-    }
-    void applyHysteresis(const cv::Mat &magnitudes, cv::Mat &dst, int width, int height, float lowThreshold, float highThreshold)
-    {
-        for (int y = 1; y < height - 1; y++)
-        {
-            for (int x = 1; x < width - 1; x++)
-            {
-                float mag = magnitudes.at<float>(y, x);
 
-                if (mag >= highThreshold)
-                {
-                    // Silná hrana -> 100% zapisujeme 255
-                    dst.at<float>(y, x) = 255.0f;
-                }
-                else if (mag >= lowThreshold)
-                {
-                    bool connectedToStrongEdge = false;
-                    for (int j = -1; j <= 1; j++)
-                    {
-                        for (int i = -1; i <= 1; i++)
-                        {
-                            if (j == 0 && i == 0)
-                                continue;
+/**
+     * @brief Thins edges by suppressing pixels that are not the local maximum in the direction of the gradient.
+     * @details
+     * [ How does Non-Maximum Suppression work? ]
+     * Sobel edge detection often produces "thick" edges because it highlights all pixels where a color transition occurs.
+     * Non-Maximum Suppression (NMS) thins these edges down to a single pixel width.
+     * It does this by checking each pixel against its neighbors ALONG THE DIRECTION OF THE GRADIENT (the direction of the sharpest color change), which is always perpendicular to the edge itself.
+     * For example, if we have a thick HORIZONTAL edge, the color changes VERTICALLY. Therefore, NMS will compare the current pixel's magnitude to the pixels directly ABOVE and BELOW it.
+     * If either the top or bottom neighbor has a stronger magnitude, the current pixel is not the true "ridge" of the edge and is suppressed (set to zero).
+     * The result is a much cleaner edge map with thin, well-defined lines.
+     */
+    void applyNonMaximumSuppression(const cv::Mat &magnitudes, const cv::Mat &angles, cv::Mat &dst, int width, int height);
 
-                            if (magnitudes.at<float>(y + j, x + i) >= highThreshold)
-                            {
-                                connectedToStrongEdge = true;
-                                break;
-                            }
-                        }
-                        if (connectedToStrongEdge)
-                            break;
-                    }
-
-                    if (connectedToStrongEdge)
-                    {
-                        dst.at<float>(y, x) = 255.0f;
-                    }
-                }
-            }
-        }
-    }
+/**
+     * @brief Filters edges using two thresholds. Weak edges are only kept if connected to strong edges.
+     * @details
+     * [ How does Hysteresis Thresholding work? ]
+     * After Non-Maximum Suppression, we have a thinned edge map, but it may still contain noise and weak edges.
+     *  Hysteresis Thresholding is a technique used to further refine the edge map by classifying edges into three categories: strong, weak, and non-edges.
+     * 1. Strong edges: Pixels with gradient magnitudes above the high threshold are considered strong edges and are immediately kept.
+     * 2. Weak edges: Pixels with gradient magnitudes between the low and high thresholds are considered weak edges. 
+     * They are not immediately discarded, but they are only kept if they are connected to strong edges.
+     *  This means that if a weak edge pixel is adjacent to a strong edge pixel, it is promoted to a strong edge and kept in the final edge map.
+     * 3. Non-edges: Pixels with gradient magnitudes below the low threshold are considered non-edges and are discarded.
+     * The result of hysteresis thresholding is a cleaner edge map that retains important
+     * edges while reducing noise and false positives, especially in areas where the gradient is not very strong
+     *  but still significant due to connectivity to strong edges.
+     */
+    void applyHysteresis(const cv::Mat &magnitudes, cv::Mat &dst, int width, int height, float lowThreshold, float highThreshold);
 };

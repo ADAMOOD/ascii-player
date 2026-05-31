@@ -39,7 +39,14 @@ set(SOURCES
     src/ui/Property.cpp
     src/strategies/StrategiesFactory.cpp
     src/strategies/ImageUtilits.cpp
-    src/strategies/BaseGrayscaleStrategy.cpp
+
+    src/strategies/AbstractRenderStrategy.cpp
+    src/strategies/Grayscale/BaseGrayscaleStrategy.cpp
+    src/strategies/EdgeDetections/BaseEdgeDetectionStrategy.cpp
+    src/strategies/EdgeDetections/SobelEdgeDetectionStrategy.cpp
+    src/strategies/EdgeDetections/AdvancedEdgeDetectionStrategy.cpp
+    src/strategies/EdgeDetections/ComicEdgeDetectionStrategy.cpp
+
     src/ui/SettingsScreen.cpp
 )
 

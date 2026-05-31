@@ -20,7 +20,7 @@ namespace ImageUtils
         cv::Vec3b bgColor; ///< Background cell color
     };
 
-    // --- MALÉ FUNKCE ZŮSTÁVAJÍ INLINE ---
+    // --- SMALL INLINE FUNCTIONS ---
 
     inline std::string getAnsiFgColor(cv::Vec3b pixel)
     {
