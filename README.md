@@ -1,44 +1,67 @@
 # ARTSCII 🎬
 
-> Real-time terminal ASCII art video player with multiple rendering strategies and live parameter editing.
+> Real-time terminal ASCII art video player with multiple rendering strategies, live parameter editing, and optional true color output.
 
 ![C++](https://img.shields.io/badge/C%2B%2B-17-blue)
 ![OpenCV](https://img.shields.io/badge/OpenCV-4.x-green)
-![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20WSL-lightgrey)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey)
+![FTXUI](https://img.shields.io/badge/TUI-FTXUI-orange)
 
 ---
 
 ## Overview
 
-ARTSCII converts video files into ASCII art and plays them directly in your terminal — in real time. It uses a multi-threaded producer/consumer pipeline to decode frames in the background while the main thread renders them, ensuring smooth playback. All rendering parameters can be adjusted live with the keyboard while the video is playing.
+ARTSCII converts video files or a live webcam feed into ASCII art and plays them directly in your terminal — in real time. It uses a multi-threaded producer/consumer pipeline to decode frames in the background while the main thread renders them, ensuring smooth playback. All rendering parameters can be adjusted live with the keyboard while the video is playing.
 
 ---
 
 ## Features
 
-- Real-time ASCII video playback in terminal
+- Real-time ASCII video playback in terminal (video files and webcam)
 - Multi-threaded frame decoding (producer/consumer queue)
-- Multiple rendering strategies selectable at runtime
+- 7 rendering strategies selectable at runtime
 - Live parameter tuning while video is playing (no restart needed)
-- Optional per-character ANSI true color (24-bit RGB)
+- Optional per-character ANSI true color (24-bit RGB) or 8-bit (256-color) mode
+- Color tolerance parameter to batch nearby colors and reduce escape sequence spam
 - Aspect ratio correction for terminal font proportions
 - Dynamic terminal resize detection
 - Interactive TUI for settings and file browsing (FTXUI)
+- Cross-platform: Linux, WSL2, and Windows (Windows Terminal required)
 
 ---
 
 ## Requirements
 
-| Dependency | Version  |
-|------------|----------|
-| C++ standard | C++17 |
-| [OpenCV](https://opencv.org/) | 4.x |
-| [FTXUI](https://github.com/ArthurSonzogni/FTXUI) | any recent |
-| CMake | 3.15+ |
+| Dependency | Version | Notes |
+|------------|---------|-------|
+| C++ standard | C++17 | |
+| [OpenCV](https://opencv.org/) | 4.x | |
+| [FTXUI](https://github.com/ArthurSonzogni/FTXUI) | any recent | Auto-downloaded on Linux via CMake FetchContent; install via vcpkg on Windows |
+| CMake | 3.14+ | |
+
+### Windows — additional requirements
+
+- **Windows Terminal** (not classic CMD or PowerShell) — required for ANSI escape code support
+- **vcpkg** — for OpenCV and FTXUI installation:
+
+```powershell
+vcpkg install opencv4:x64-windows
+vcpkg install ftxui:x64-windows
+```
+
+### Linux / WSL2 — additional requirements
+
+```bash
+sudo apt install libopencv-dev cmake build-essential
+```
+
+> **WSL2 + Webcam:** The default WSL2 kernel does not include the `uvcvideo` driver. You need to attach the camera via `usbipd` and build a custom WSL2 kernel with UVC support enabled. See [Microsoft WSL USB docs](https://learn.microsoft.com/en-us/windows/wsl/connect-usb) for `usbipd` setup, and [this guide](https://github.com/PINTO0309/wsl2_linux_kernel_usbcam_enable_conf) for the custom kernel build. Video file playback works without any extra setup.
 
 ---
 
 ## Build
+
+### Linux / WSL2
 
 ```bash
 git clone https://github.com/yourusername/artscii.git
@@ -48,15 +71,26 @@ cmake ..
 make
 ```
 
+### Windows (MSVC + vcpkg)
+
+```powershell
+git clone https://github.com/yourusername/artscii.git
+cd artscii
+mkdir build; cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE="<path_to_vcpkg>/scripts/buildsystems/vcpkg.cmake"
+cmake --build . --config Release
+```
+
 ---
 
 ## Usage
 
 ```bash
-./artscii
+./artscii          # Linux / WSL2
+.\ASCII-PLAYER.exe # Windows (run inside Windows Terminal)
 ```
 
-On first run you will be taken to a file browser to select a video file. The path is saved to `settings.conf` for subsequent runs. From the Settings screen you can also choose the rendering strategy and target FPS.
+On first run you will be taken to a file browser to select a video file. The path is saved to `settings.conf` for subsequent runs. From the Settings screen you can switch to webcam mode, choose a rendering strategy, and set other options.
 
 ### Supported video formats
 
@@ -74,58 +108,72 @@ On first run you will be taken to a file browser to select a video file. The pat
 
 ## Rendering Strategies
 
-All strategies share a common `IRenderStrategy` interface. They receive a raw `cv::Mat` frame and write into a `std::vector<Pixel>` buffer (symbol + RGB color per character).
+All strategies share a common `IRenderStrategy` interface. They receive a raw `cv::Mat` frame and write into a `std::vector<Pixel>` buffer (symbol + foreground RGB color + background RGB color per character).
+
+Every strategy inherits the **color properties** from `AbstractRenderStrategy`:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **Use Color** | Toggle | Enables per-character ANSI color output |
+| **8-bit Colors** | Toggle | Switches from 24-bit RGB to 256-color mode (wider terminal compatibility) |
+| **Color Tolerance** | Float | Groups nearby colors into one escape sequence to reduce output size |
+
+---
 
 ### Grayscale strategies
 
-All grayscale strategies inherit from `BaseGrayscaleStrategy`, which handles resizing, pixel iteration and ASCII character lookup. They differ only in how they compute a single brightness value from R, G, B channels.
-
-| Strategy | Method |
-|----------|--------|
-| **Naive Grayscale** | `(R + G + B) / 3` — simple average |
-| **Perceptual Grayscale** | `0.299·R + 0.587·G + 0.114·B` — weighted for human eye sensitivity |
-| **Lightness Grayscale** | `(min(R,G,B) + max(R,G,B)) / 2` — HSL lightness |
-| **Value Grayscale** | `max(R, G, B)` — HSV value channel |
+All grayscale strategies inherit from `BaseGrayscaleStrategy`, which handles resizing, pixel iteration, color extraction, and ASCII character lookup. Subclasses only define the brightness formula.
 
 The brightness value is mapped onto the character ramp:
 ```
  .:-=+*#%@
 ```
 
+| Strategy | Brightness formula |
+|----------|--------------------|
+| **Naive Grayscale** | `(R + G + B) / 3` — simple average |
+| **Perceptual Grayscale** | `0.299·R + 0.587·G + 0.114·B` — weighted for human eye sensitivity (default) |
+| **Lightness Grayscale** | `(min(R,G,B) + max(R,G,B)) / 2` — HSL lightness |
+| **Value Grayscale** | `max(R, G, B)` — HSV value channel |
+
+---
+
 ### Edge detection strategies
 
-Edge strategies inherit from `BaseEdgeDetectionStrategy`, which provides Gaussian blur and Sobel gradient computation. They all use these shared parameters:
+Edge strategies inherit from `BaseEdgeDetectionStrategy`, which provides a hand-written Gaussian blur (separable 1D convolution) and a hand-written Sobel gradient computation. All edge strategies share these parameters:
 
-| Parameter | Description |
-|-----------|-------------|
-| **Kernel Size** | Gaussian blur kernel (odd, 3–11) |
-| **Sobel Boost** | Multiplier applied to gradient magnitude |
+| Property | Description |
+|----------|-------------|
+| **Kernel Size** | Gaussian blur kernel size (odd, 3–11). Larger = smoother edges |
+| **Sobel Boost** | Multiplier applied to raw gradient magnitude |
+| **Edge Threshold** | Minimum magnitude to draw a character instead of the fill character |
 
 #### Sobel Edge Detection
 
-Computes gradient magnitude and angle using a 3×3 Sobel operator. Pixels above a magnitude threshold are drawn as directional ASCII characters (`|`, `-`, `/`, `\`), the rest as spaces.
+Computes gradient magnitude and direction using the 3×3 Sobel operator. Pixels above the threshold are drawn as directional ASCII characters (`|`, `-`, `/`, `\`) based on gradient angle. Non-edge pixels use the fill character configured in Settings. Color from the source pixel is carried through.
 
-#### Canny Edge Detection (`AdvancedEdgeDetectionStrategy`)
+#### Canny Edge Detection
 
-Extends Sobel with Non-Maximum Suppression (NMS) to thin edges to single-pixel width. Optionally adds **Hysteresis thresholding** (enabled as a live toggle), which distinguishes strong edges from weak ones and only keeps weak edges that connect to strong ones.
+Extends Sobel with **Non-Maximum Suppression (NMS)**, which thins edges to a single pixel width by suppressing pixels that are not the local maximum along the gradient direction. Optionally adds **Hysteresis thresholding**, which distinguishes strong edges from weak ones — weak edges are only kept if they are connected to a strong edge.
 
-Additional parameters when Hysteresis is ON:
+Additional properties when Hysteresis is enabled:
 
-| Parameter | Description |
-|-----------|-------------|
-| **Hysteresis Low** | Lower threshold for weak edge candidates |
-| **Hysteresis High** | Upper threshold for strong edges |
+| Property | Description |
+|----------|-------------|
+| **Hysteresis** | Toggle ON/OFF |
+| **Hysteresis Low** | Lower threshold — candidates below this are discarded |
+| **Hysteresis High** | Upper threshold — pixels above this are strong edges |
 
 #### Comic / Edge+Grayscale
 
-Combines edge detection with grayscale shading. Edges are drawn with directional characters. For each edge pixel, neighboring pixels in the edge direction are checked — if enough of them share the same direction (configurable sensitivity), the character is kept; otherwise a `+` is used for corners and noise. Non-edge areas are filled with brightness-mapped shading characters.
+Combines edge detection with grayscale shading. Edge pixels use the directional character set. For each edge pixel, the **Smart Edge** algorithm scans neighbors along the gradient direction: if enough of them share the same orientation (above the sensitivity threshold), the directional character is drawn; otherwise a `+` is used for corners and noise. Non-edge areas are filled with brightness-mapped shading characters from the grayscale ramp.
 
-Additional parameters:
+Additional properties:
 
-| Parameter | Description |
-|-----------|-------------|
-| **Search Radius** | How many neighboring pixels to check for edge continuity |
-| **Sensitivity** | Minimum ratio of matching neighbors to draw a clean line |
+| Property | Description |
+|----------|-------------|
+| **Search Radius** | How many pixels to scan in each direction for line continuity |
+| **Sensitivity** | Minimum ratio of matching neighbors to draw a clean directional line |
 
 ---
 
@@ -133,40 +181,70 @@ Additional parameters:
 
 ```
 main()
- └── Tui                        — FTXUI menus, file browser, settings screen
+ └── Tui                           — FTXUI menus, file browser, settings screen
       └── AsciiEngine
-           ├── frameProducerTask()   — background thread: reads frames → queue
-           ├── fetchFrameFromQueue() — main thread: pops frame
+           ├── frameProducerTask() — background thread: decodes frames → bounded queue
+           ├── fetchFrameFromQueue()— main thread: pops frame (wait_for with timeout)
            ├── processFrameToBuffer()— calls active strategy's render()
-           ├── renderBuffer()        — writes Pixel buffer to stdout (with optional ANSI color)
-           ├── renderHUD()           — draws live parameter bar at bottom
-           └── checkUserInput()      — non-blocking raw keyboard input
+           ├── renderBuffer()      — writes Pixel buffer to stdout (optional ANSI color)
+           ├── renderHUD()         — live parameter bar at bottom of screen
+           └── checkUserInput()    — non-blocking raw keyboard polling
 
-IRenderStrategy  (interface)
- ├── BaseGrayscaleStrategy
- │    ├── NaiveGrayscaleStrategy
- │    ├── PerceptualGrayscaleStrategy
- │    ├── LightnessGrayscaleStrategy
- │    └── ValueGrayscaleStrategy
- └── BaseEdgeDetectionStrategy
-      └── AdvancedEdgeDetectionStrategy
-           ├── CannyEdgeDetectionStrategy
-           └── ComicEdgeDetectionStrategy
+IRenderStrategy           (pure interface)
+ └── AbstractRenderStrategy        (adds: Use Color, 8-bit Colors, Color Tolerance)
+      ├── BaseGrayscaleStrategy    (adds: resize + ASCII ramp + color extraction)
+      │    ├── NaiveGrayscaleStrategy
+      │    ├── PerceptualGrayscaleStrategy
+      │    ├── LightnessGrayscaleStrategy
+      │    └── ValueGrayscaleStrategy
+      └── BaseEdgeDetectionStrategy(adds: Gaussian kernel + Sobel computation)
+           ├── SobelEdgeDetectionStrategy
+           └── AdvancedEdgeDetectionStrategy (adds: NMS + Hysteresis)
+                ├── CannyEdgeDetectionStrategy
+                └── ComicEdgeDetectionStrategy
 ```
 
-### Key design patterns
+---
 
-**Strategy pattern** — `IRenderStrategy` defines a single `render()` method. `StrategiesFactory` instantiates the correct subclass at runtime. `AsciiEngine` only ever talks to the interface, with no knowledge of which strategy is active.
+### Design patterns used
 
-**Producer/Consumer with bounded queue** — A background thread continuously decodes video frames into a `std::queue<cv::Mat>` (max size 30). The main render loop pops from the queue. Synchronization uses `std::mutex` + two `std::condition_variable`s (`m_frameReady`, `m_queueNotFull`).
+**Strategy pattern** — `IRenderStrategy` defines a single `render()` method. `StrategiesFactory` instantiates the correct subclass at runtime based on a name string. `AsciiEngine` talks only to the interface — it has no knowledge of which strategy is active.
 
-**Template Method pattern** — `BaseGrayscaleStrategy::render()` defines the full pixel loop. Subclasses only override `calculateBrightness()`. Similarly, `BaseEdgeDetectionStrategy::generateBaseEdgeData()` provides blur + Sobel, and `AdvancedEdgeDetectionStrategy::render()` provides NMS + Hysteresis while delegating the character decision to `determinePixelChar()` in subclasses.
+**Template Method pattern** — `BaseGrayscaleStrategy::render()` defines the full pixel loop and color extraction. Subclasses only override `calculateBrightness()`. Similarly, `AdvancedEdgeDetectionStrategy::render()` defines the NMS + Hysteresis pipeline and delegates only the final character decision to `determinePixelChar()` in `CannyEdgeDetectionStrategy` and `ComicEdgeDetectionStrategy`.
 
-**Dynamic property system** — Each strategy exposes a `std::vector<Property>` via `getProperties()`. The HUD displays these live and `setProperty()` applies changes mid-playback. Properties can appear/disappear dynamically (e.g. Hysteresis Low/High only show when Hysteresis is ON).
+**Factory pattern** — `StrategiesFactory::createStrategy(name)` centralizes object creation. Adding a new strategy requires only registering it in the factory and the name list — no changes to `AsciiEngine`.
+
+**Producer/Consumer with bounded queue** — A background thread continuously decodes video frames into a `std::queue<cv::Mat>` (max 30 frames). The main render loop pops from the queue. Synchronization uses `std::mutex` + two `std::condition_variable`s (`m_frameReady`, `m_queueNotFull`). `fetchFrameFromQueue()` uses `wait_for` with a 50 ms timeout so the main loop can still process keyboard input when the queue is empty.
+
+**Dynamic property system** — Each strategy exposes a `std::vector<Property>` via `getProperties()`. The HUD renders these at the bottom of the screen. `setProperty()` applies changes mid-playback. Properties can appear and disappear dynamically (e.g., Hysteresis Low/High only appear when Hysteresis is ON). The system is chained: each level calls its parent's `getProperties()` first and appends its own.
+
+---
 
 ### Frame buffer
 
-The buffer is a `std::vector<ImageUtils::Pixel>` of size `width × height`. Each `Pixel` holds a `char symbol` and a `cv::Vec3b color`. `renderBuffer()` writes the buffer to stdout row by row, optionally wrapping each character in ANSI 24-bit color escape sequences (`\x1b[38;2;R;G;Bm`).
+The buffer is a `std::vector<ImageUtils::Pixel>` of size `width × height`, stored in row-major order (`index = y * width + x`). Each `Pixel` holds:
+
+```cpp
+struct Pixel {
+    char     symbol;   // ASCII character
+    cv::Vec3b fgColor; // Foreground text color (BGR)
+    cv::Vec3b bgColor; // Background cell color (BGR, reserved for future use)
+};
+```
+
+`renderBuffer()` assembles the entire frame into a single `std::string` before writing it to stdout in one `flush`, minimizing system call overhead. Color escape sequences are only emitted when the color differs from the previous pixel (controlled by `Color Tolerance`).
+
+---
+
+### Cross-platform notes
+
+| Feature | Linux / WSL2 | Windows |
+|---------|-------------|---------|
+| Terminal size | `ioctl(TIOCGWINSZ)` | `GetConsoleScreenBufferInfo()` |
+| Raw keyboard input | `termios` + `read()` | `_kbhit()` + `_getch()` |
+| Webcam backend | `cv::CAP_V4L2` | `cv::CAP_MSMF` |
+| ANSI escape codes | Any modern terminal | **Windows Terminal only** |
+| FTXUI | Auto via CMake FetchContent | vcpkg |
 
 ---
 
@@ -177,16 +255,28 @@ Settings are persisted in `settings.conf` (key=value format) in the working dire
 | Key | Description |
 |-----|-------------|
 | `video_path` | Last used video file path |
-| `target_fps` | Target playback FPS |
+| `use_webcam` | `true` / `false` — whether to use live webcam feed |
+| `target_fps` | Target playback FPS (UI only — sync not yet implemented) |
 | `render_strategy` | Name of the last used strategy |
+| `fill_char` | Fill character for non-edge areas in edge detection strategies |
 
 ---
 
 ## Planned / TODO
 
-- [ ] Actual FPS-based frame sync (currently fixed 33 ms sleep)
-- [ ] Color support for Edge Detection strategies (currently always black)
-- [ ] Background color rendering (ANSI 48;2 sequences)
+- [ ] Actual FPS-based frame synchronization (currently a fixed 33 ms sleep)
+- [ ] Background color rendering (ANSI `48;2;R;G;B` sequences — `bgColor` field already present in `Pixel`)
 - [ ] Audio playback sync
-- [ ] Windows native terminal support
+- [ ] Enable ANSI Virtual Terminal Processing automatically on Windows (currently requires Windows Terminal)
 
+---
+
+## Documentation
+
+The codebase follows Doxygen documentation conventions. To generate HTML docs:
+
+```bash
+doxygen Doxyfile
+```
+
+Key documented components: `AsciiEngine`, `IRenderStrategy`, `AbstractRenderStrategy`, `BaseEdgeDetectionStrategy`, `AdvancedEdgeDetectionStrategy`, `ImageUtils`, `Property`, `ConfigManager`.
