@@ -50,6 +50,11 @@ void AdvancedEdgeDetectionStrategy::render(const cv::Mat &inputFrame, std::vecto
     // rendering loop - we still delegate the character decision to the child class, but now we have the option to use the refined nmsMagnitudes and angles for better edge representation
     for (int y = 0; y < height; y++)
     {
+        if (m_show_debug_window)
+    {
+        // Převod 32-bitových floatů z NMS na 8-bitový grayscale pro zobrazení
+        nmsMagnitudes.convertTo(m_debugFrame, CV_8UC1);
+    }
         for (int x = 0; x < width; x++)
         {
             int bufferIndex = y * width + x;

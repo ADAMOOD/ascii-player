@@ -11,6 +11,11 @@ generateBaseEdgeData(inputFrame, coloredResizedFrame, magnitudes, angles, width,
 
         for (int y = 0; y < height; y++)
         {
+            if (m_show_debug_window)
+    {
+        // Sobelovy magnituda jsou také 32-bitové floaty, převedeme na 8-bitový grayscale
+        magnitudes.convertTo(m_debugFrame, CV_8UC1);
+    }
             for (int x = 0; x < width; x++)
             {
                 int bufferIndex = y * width + x;
