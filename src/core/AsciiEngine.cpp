@@ -8,12 +8,12 @@
 
 // --- OS dependent libraries  ---
 #ifdef _WIN32
-    #include <windows.h>
-    #include <conio.h>
+#include <windows.h>
+#include <conio.h>
 #else
-    #include <termios.h>
-    #include <unistd.h>
-    #include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
 #endif
 
 void AsciiEngine::enableRawMode()
@@ -79,7 +79,7 @@ bool AsciiEngine::init(const std::string &videoPath)
     m_cap.open(videoPath);
     if (!m_cap.isOpened())
     {
-        std::cerr << "[ERROR] Could not open video file: [" << videoPath <<"]"<< std::endl;
+        std::cerr << "[ERROR] Could not open video file: [" << videoPath << "]" << std::endl;
         return false;
     }
     return setupEngineConfigs();
@@ -89,13 +89,25 @@ bool AsciiEngine::init()
 {
     m_isLiveStream = true;
 
+    std::string camStr = ConfigManager::getValFromSettings("camera_index");
+    int camIndex = 0; // Výchozí pojistka
+    if (!camStr.empty())
+    {
+        try
+        {
+            camIndex = std::stoi(camStr);
+        }
+        catch (...)
+        {//TODO
+        } 
+    }
 // --- multiplatform opening of webcam ---
 #ifdef _WIN32
     m_cap.open(0, cv::CAP_MSMF);
 #else
     m_cap.open(0, cv::CAP_V4L2);
 #endif
-// ---------------------------------------------
+    // ---------------------------------------------
 
     if (!m_cap.isOpened())
     {
@@ -116,13 +128,13 @@ bool AsciiEngine::init()
 void AsciiEngine::updateTerminalSize()
 {
     // --- multiplatform terminal size fetching ---
-    //windows returns the size of the whole console buffer, so we have to calculate the actual visible area   
+    // windows returns the size of the whole console buffer, so we have to calculate the actual visible area
 #ifdef _WIN32
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
     int termW = csbi.srWindow.Right - csbi.srWindow.Left;
     int termH = csbi.srWindow.Bottom - csbi.srWindow.Top;
-#else//linux ioctl gives us the visible area right away
+#else // linux ioctl gives us the visible area right away
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
     int termW = w.ws_col - 1;
@@ -168,7 +180,8 @@ void AsciiEngine::frameProducerTask()
             }
         }
         std::unique_lock<std::mutex> uniqueLock(m_queueMutex);
-        m_queueNotFull.wait(uniqueLock, [&] { return m_frames.size() < MAX_QUEUE_SIZE || !m_isRunning; });
+        m_queueNotFull.wait(uniqueLock, [&]
+                            { return m_frames.size() < MAX_QUEUE_SIZE || !m_isRunning; });
         m_frames.push(tmp);
         uniqueLock.unlock();
         m_frameReady.notify_one();
@@ -189,13 +202,25 @@ void AsciiEngine::play()
 
         if (frame.empty())
         {
-            if (!m_isRunning) break;
+            if (!m_isRunning)
+                break;
             checkUserInput();
             continue;
         }
 
         processFrameToBuffer(frame);
         renderBuffer();
+
+        if (m_currentStrategy->getProperty("Show Debug Window") > 0.5f) 
+        {
+            cv::Mat debugMat = m_currentStrategy->getDebugFrame();
+            if (!debugMat.empty()) 
+            {
+                cv::imshow("Debug", debugMat);
+                cv::waitKey(1); 
+            }
+        }
+
         renderHUD();
         syncFramerate();
         checkUserInput();
@@ -249,8 +274,9 @@ void AsciiEngine::renderHUD()
         std::string plainText = m_activeProperties[i].toString();
         int propLength = plainText.length();
 
-        if (visibleChars + propLength > m_width) break;
-        
+        if (visibleChars + propLength > m_width)
+            break;
+
         visibleChars += propLength;
         if (i == static_cast<size_t>(m_selectedPropertyIndex))
         {
@@ -269,7 +295,8 @@ cv::Mat AsciiEngine::fetchFrameFromQueue()
     cv::Mat frame;
     std::unique_lock<std::mutex> uniqueLock(m_queueMutex);
 
-    bool gotFrame = m_frameReady.wait_for(uniqueLock, std::chrono::milliseconds(50), [&] { return !m_frames.empty() || !m_isRunning; });
+    bool gotFrame = m_frameReady.wait_for(uniqueLock, std::chrono::milliseconds(50), [&]
+                                          { return !m_frames.empty() || !m_isRunning; });
 
     if (!gotFrame || (!m_isRunning && m_frames.empty()))
         return cv::Mat();
@@ -336,10 +363,12 @@ void AsciiEngine::renderBuffer()
             }
             frameOutput += p.symbol;
         }
-        if (y < m_height - 1) frameOutput += "\n";
+        if (y < m_height - 1)
+            frameOutput += "\n";
     }
 
-    if (useColor) frameOutput += "\x1b[0m";
+    if (useColor)
+        frameOutput += "\x1b[0m";
     frameOutput += "\n";
     std::cout << "\x1b[H" << frameOutput << std::flush;
 }
@@ -369,7 +398,6 @@ void AsciiEngine::checkUserInput()
     }
 #endif
 
-
     if (hasInput)
     {
         if (c == 'q' || c == 'Q')
@@ -383,15 +411,24 @@ void AsciiEngine::checkUserInput()
         switch (c)
         {
         case 'a':
-            if (m_selectedPropertyIndex > 0) m_selectedPropertyIndex--;
+        {
+            if (m_selectedPropertyIndex > 0)
+                m_selectedPropertyIndex--;
             break;
+        }
+
         case 'd':
+        {
             if (!m_activeProperties.empty() && m_selectedPropertyIndex < static_cast<int>(m_activeProperties.size()) - 1)
                 m_selectedPropertyIndex++;
             break;
+        }
+
         case 'w':
         case 's':
-            if (m_activeProperties.empty()) break;
+        {
+            if (m_activeProperties.empty())
+                break;
 
             Property prop = m_activeProperties[m_selectedPropertyIndex];
             prop.ShiftedValue(c == 'w');
@@ -407,6 +444,23 @@ void AsciiEngine::checkUserInput()
                 m_selectedPropertyIndex = m_activeProperties.size() - 1;
             }
             break;
+        }
+
+        case 'x':
+        {
+            float currentVal = m_currentStrategy->getProperty("Show Debug Window");
+            Property p;
+            p.name = "Show Debug Window";
+            p.currentValue = (currentVal > 0.5f) ? 0.0f : 1.0f;
+            m_currentStrategy->setProperty(p);
+
+            m_activeProperties = m_currentStrategy->getProperties();
+            if (p.currentValue < 0.5f)
+            {
+                cv::destroyWindow("Debug");
+            }
+            break;
+        }
         }
     }
 }

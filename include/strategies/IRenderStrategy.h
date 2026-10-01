@@ -44,4 +44,8 @@ public:
      * @param property The modified property object received from the user interface.
      */
     virtual void setProperty(const Property property) = 0;
+    /**
+     * @brief Provide a matrix of the processed video
+     */
+    virtual cv::Mat getDebugFrame() const = 0;
 };
