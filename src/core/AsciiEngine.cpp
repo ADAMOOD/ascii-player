@@ -57,8 +57,10 @@ bool AsciiEngine::setupEngineConfigs()
 
     m_menuStartIndex = 0;
     m_selectedPropertyIndex = 0;
-    double origWidth = m_cap.get(cv::CAP_PROP_FRAME_WIDTH);
-    double origHeight = m_cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+    double origWidth;
+    double origHeight;
+
+    m_streamManager.getOriginalSize(origWidth, origHeight);
 
     if (origWidth <= 0 || origHeight <= 0)
     {
@@ -75,11 +77,9 @@ bool AsciiEngine::setupEngineConfigs()
 
 bool AsciiEngine::init(const std::string &videoPath)
 {
-    m_isLiveStream = false;
-    m_cap.open(videoPath);
-    if (!m_cap.isOpened())
+    if (!m_streamManager.init(videoPath))
     {
-        std::cerr << "[ERROR] Could not open video file: [" << videoPath << "]" << std::endl;
+        std::cerr << "[ERROR] Stream manager ERROR " << std::endl;
         return false;
     }
     return setupEngineConfigs();
@@ -87,41 +87,11 @@ bool AsciiEngine::init(const std::string &videoPath)
 
 bool AsciiEngine::init()
 {
-    m_isLiveStream = true;
-
-    std::string camStr = ConfigManager::getValFromSettings("camera_index");
-    int camIndex = 0; // Výchozí pojistka
-    if (!camStr.empty())
+    if (!m_streamManager.init())
     {
-        try
-        {
-            camIndex = std::stoi(camStr);
-        }
-        catch (...)
-        { // TODO
-        }
-    }
-// --- multiplatform opening of webcam ---
-#ifdef _WIN32
-    m_cap.open(0, cv::CAP_MSMF);
-#else
-    m_cap.open(0, cv::CAP_V4L2);
-#endif
-    // ---------------------------------------------
-
-    if (!m_cap.isOpened())
-    {
-        std::cerr << "[ERROR] Could not open webcam. Check connection." << std::endl;
+        std::cerr << "[ERROR] Stream manager ERROR " << std::endl;
         return false;
     }
-    // --- setting webcam properties ---
-    m_cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
-    m_cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
-    m_cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
-    m_cap.set(cv::CAP_PROP_FPS, 30);
-    m_cap.set(cv::CAP_PROP_BUFFERSIZE, 1);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     return setupEngineConfigs();
 }
 
@@ -159,50 +129,21 @@ void AsciiEngine::updateTerminalSize()
     }
 }
 
-void AsciiEngine::frameProducerTask()
-{
-    while (this->m_isRunning)
-    {
-        cv::Mat tmp;
-        m_cap.read(tmp);
-        if (tmp.empty())
-        {
-            if (m_isLiveStream)
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                continue;
-            }
-            else
-            {
-                m_isRunning = false;
-                m_frameReady.notify_one();
-                break;
-            }
-        }
-        std::unique_lock<std::mutex> uniqueLock(m_queueMutex);
-        m_queueNotFull.wait(uniqueLock, [&]
-                            { return m_frames.size() < MAX_QUEUE_SIZE || !m_isRunning; });
-        m_frames.push(tmp);
-        uniqueLock.unlock();
-        m_frameReady.notify_one();
-    }
-}
-
 void AsciiEngine::play()
 {
     enableRawMode();
-    m_isRunning = true;
-    m_videoProcessingThread = std::thread(&AsciiEngine::frameProducerTask, this);
+    m_isEngineRunning=true;
+    m_streamManager.start();
     std::cout << "\x1b[2J\x1b[?25l";
 
-    while (m_isRunning)
+    while (m_isEngineRunning)
     {
         updateTerminalSize();
-        cv::Mat frame = fetchFrameFromQueue();
+        cv::Mat frame = m_streamManager.getNextFrame();
 
         if (frame.empty())
         {
-            if (!m_isRunning)
+            if (!m_isEngineRunning)
                 break;
             checkUserInput();
             continue;
@@ -211,79 +152,81 @@ void AsciiEngine::play()
         processFrameToBuffer(frame);
         renderBuffer();
 
-if (m_currentStrategy->getProperty("Show Debug Window") > 0.5f) 
-{
-    cv::Mat rawDebugMat = m_currentStrategy->getDebugFrame();
-    if (!rawDebugMat.empty()) 
-    {
-        // 1. Zaručí, že s oknem půjde volně hýbat
-        cv::namedWindow("Debug", cv::WINDOW_NORMAL);
+        if (m_currentStrategy->getProperty("Show Debug Window") > 0.5f)
+        {
+            cv::Mat rawDebugMat = m_currentStrategy->getDebugFrame();
+            if (!rawDebugMat.empty())
+            {
+                // 1. Zaručí, že s oknem půjde volně hýbat
+                cv::namedWindow("Debug", cv::WINDOW_NORMAL);
 
 #ifdef _WIN32
-        static int lastTermCols = 0;
-        
-        CONSOLE_SCREEN_BUFFER_INFO csbi;
-        GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-        int termCols = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+                static int lastTermCols = 0;
 
-        // Okno přepočítáme jen při změně rozlišení terminálu (při odzoomování)
-        if (termCols != lastTermCols && termCols > 0) 
-        {
-            lastTermCols = termCols;
-            
-            // Oprava: Najde skutečně viditelné aktivní okno terminálu
-            HWND consoleHwnd = GetForegroundWindow(); 
-            RECT consoleRect;
-            
-            if (consoleHwnd && GetWindowRect(consoleHwnd, &consoleRect))
-            {
-                // Fyzická šířka terminálu v pixelech na monitoru
-                int physConsoleW = consoleRect.right - consoleRect.left;
-                
-                // Přibližná fyzická šířka jednoho znaku
-                float physCharW = (float)physConsoleW / termCols;
-                
-                // Kolik znaků máme k dispozici v černém sloupci vedle ASCII videa
-                int sidebarChars = termCols - m_width;
-                
-                // Pokud je v terminálu místo na pravé straně, ukotvíme okno tam
-                if (sidebarChars > 5) 
+                CONSOLE_SCREEN_BUFFER_INFO csbi;
+                GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+                int termCols = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+
+                // Okno přepočítáme jen při změně rozlišení terminálu (při odzoomování)
+                if (termCols != lastTermCols && termCols > 0)
                 {
-                    int targetWinW = static_cast<int>(sidebarChars * physCharW);
-                    int targetWinH = static_cast<int>(targetWinW / m_aspectRatio);
-                    
-                    // Zabrání zmenšení na nečitelnou velikost
-                    if (targetWinW < 150) targetWinW = 150;
-                    if (targetWinH < 100) targetWinH = 100;
+                    lastTermCols = termCols;
 
-                    cv::resizeWindow("Debug", targetWinW, targetWinH);
-                    
-                    // Přesun do pravého dolního rohu (-20px jako bezpečná rezerva pro lišty)
-                    int targetX = consoleRect.right - targetWinW - 20;
-                    int targetY = consoleRect.bottom - targetWinH - 20;
-                    cv::moveWindow("Debug", targetX, targetY);
+                    // Oprava: Najde skutečně viditelné aktivní okno terminálu
+                    HWND consoleHwnd = GetForegroundWindow();
+                    RECT consoleRect;
+
+                    if (consoleHwnd && GetWindowRect(consoleHwnd, &consoleRect))
+                    {
+                        // Fyzická šířka terminálu v pixelech na monitoru
+                        int physConsoleW = consoleRect.right - consoleRect.left;
+
+                        // Přibližná fyzická šířka jednoho znaku
+                        float physCharW = (float)physConsoleW / termCols;
+
+                        // Kolik znaků máme k dispozici v černém sloupci vedle ASCII videa
+                        int sidebarChars = termCols - m_width;
+
+                        // Pokud je v terminálu místo na pravé straně, ukotvíme okno tam
+                        if (sidebarChars > 5)
+                        {
+                            int targetWinW = static_cast<int>(sidebarChars * physCharW);
+                            int targetWinH = static_cast<int>(targetWinW / m_aspectRatio);
+
+                            // Zabrání zmenšení na nečitelnou velikost
+                            if (targetWinW < 150)
+                                targetWinW = 150;
+                            if (targetWinH < 100)
+                                targetWinH = 100;
+
+                            cv::resizeWindow("Debug", targetWinW, targetWinH);
+
+                            // Přesun do pravého dolního rohu (-20px jako bezpečná rezerva pro lišty)
+                            int targetX = consoleRect.right - targetWinW - 20;
+                            int targetY = consoleRect.bottom - targetWinH - 20;
+                            cv::moveWindow("Debug", targetX, targetY);
+                        }
+                    }
                 }
-            }
-        }
 #endif
 
-        // 3. Responzivní vykreslení ostrých pixelů bez vyhlazování (INTER_NEAREST)
-        cv::Rect winRect = cv::getWindowImageRect("Debug");
-        if (winRect.width > 0 && winRect.height > 0) 
-        {
-            cv::Mat displayMat;
-            cv::resize(rawDebugMat, displayMat, cv::Size(winRect.width, winRect.height), 0, 0, cv::INTER_NEAREST);
-            cv::imshow("Debug", displayMat);
-        }
-        else 
-        {
-            // Fallback pro první frame
-            cv::imshow("Debug", rawDebugMat);
-        }
+                // 3. Responzivní vykreslení ostrých pixelů bez vyhlazování (INTER_NEAREST)
+                cv::Rect winRect = cv::getWindowImageRect("Debug");
+                if (winRect.width > 0 && winRect.height > 0)
+                {
+                    cv::Mat displayMat;
+                    cv::resize(rawDebugMat, displayMat, cv::Size(winRect.width, winRect.height), 0, 0, cv::INTER_NEAREST);
+                    cv::imshow("Debug", displayMat);
+                }
+                else
+                {
+                    // Fallback pro první frame
+                    cv::imshow("Debug", rawDebugMat);
+                }
 
-        cv::waitKey(1); 
-    }
-}
+                cv::waitKey(1);
+            }
+        }
 
         renderHUD();
         syncFramerate();
@@ -291,17 +234,7 @@ if (m_currentStrategy->getProperty("Show Debug Window") > 0.5f)
     }
 
     disableRawMode();
-    if (m_videoProcessingThread.joinable())
-    {
-        m_videoProcessingThread.join();
-    }
-
-    std::unique_lock<std::mutex> lock(m_queueMutex);
-    while (!m_frames.empty())
-    {
-        m_frames.pop();
-    }
-    lock.unlock();
+    m_streamManager.stop();
 
     std::cout << "\x1b[?25h";
 }
@@ -352,25 +285,6 @@ void AsciiEngine::renderHUD()
         }
     }
     std::cout << std::flush;
-}
-
-cv::Mat AsciiEngine::fetchFrameFromQueue()
-{
-    cv::Mat frame;
-    std::unique_lock<std::mutex> uniqueLock(m_queueMutex);
-
-    bool gotFrame = m_frameReady.wait_for(uniqueLock, std::chrono::milliseconds(50), [&]
-                                          { return !m_frames.empty() || !m_isRunning; });
-
-    if (!gotFrame || (!m_isRunning && m_frames.empty()))
-        return cv::Mat();
-
-    frame = m_frames.front();
-    m_frames.pop();
-    uniqueLock.unlock();
-    m_queueNotFull.notify_one();
-
-    return frame;
 }
 
 void AsciiEngine::setStrategy(std::string newStrategy)
@@ -466,9 +380,8 @@ void AsciiEngine::checkUserInput()
     {
         if (c == 'q' || c == 'Q')
         {
-            m_isRunning = false;
-            m_frameReady.notify_one();
-            m_queueNotFull.notify_one();
+            m_isEngineRunning=false;
+
             return;
         }
 

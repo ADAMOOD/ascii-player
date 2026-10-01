@@ -11,6 +11,7 @@
 #include <opencv2/opencv.hpp>
 #include "strategies/IRenderStrategy.h"
 #include "strategies/ImageUtilits.h"
+#include "core/StreamManager.h"
 
 
 /**
@@ -35,29 +36,20 @@ public:
     bool init(); // pro webkameru
 
     /**
-     * @brief producer task that continuously reads frames from the video source and pushes them into a thread-safe queue for processing.
-     * 
-     */
-    void frameProducerTask();
-
-    /**
      * @brief the main loop of the engine. It continuously fetches frames from the queue, processes them using the active IRenderStrategy, and renders the ASCII art to the terminal. It also handles user input for dynamic property adjustments and strategy switching.
      * 
      */
     void play();
 
 private:
-    cv::VideoCapture m_cap;                  ///< OpenCV video capture object (handles both files and webcam).
+    StreamManager m_streamManager;           ///< Provider of raw video frames
     std::vector<ImageUtils::Pixel> m_frameBuffer; ///< 1D array representing the 2D terminal screen.
     int m_width;                             ///< Current terminal width in characters.
     int m_height;                            ///< Current terminal height in characters.
-    std::thread m_videoProcessingThread;     ///< Background thread executing the frame producer task.
-    std::queue<cv::Mat> m_frames;            ///< Shared queue containing decoded video frames.
-    std::mutex m_queueMutex;                 ///< Mutex to protect access to the frame queue.
     double m_aspectRatio;                    ///< Original aspect ratio of the video source.
 
     //producer-consumer synchronization
-    std::atomic<bool> m_isRunning;           ///< Atomic flag indicating if the playback is currently active.
+    std::atomic<bool> m_isEngineRunning;      ///< Atomic flag indicating if the engine is currently active.
     std::condition_variable m_frameReady;    ///< Signaled when a new frame is added to the queue.
     std::condition_variable m_queueNotFull;  ///< Signaled when a frame is popped, meaning space is available.
     const size_t MAX_QUEUE_SIZE = 30;        ///< Maximum number of frames held in memory.

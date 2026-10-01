@@ -35,6 +35,7 @@ set(SOURCES
 
     src/core/AsciiEngine.cpp
     src/core/ConfigManager.cpp
+    src/core/StreamManager.cpp
 
     src/ui/Tui.cpp
     src/ui/Property.cpp
