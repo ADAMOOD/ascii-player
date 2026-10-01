@@ -98,8 +98,8 @@ bool AsciiEngine::init()
             camIndex = std::stoi(camStr);
         }
         catch (...)
-        {//TODO
-        } 
+        { // TODO
+        }
     }
 // --- multiplatform opening of webcam ---
 #ifdef _WIN32
@@ -211,15 +211,79 @@ void AsciiEngine::play()
         processFrameToBuffer(frame);
         renderBuffer();
 
-        if (m_currentStrategy->getProperty("Show Debug Window") > 0.5f) 
+if (m_currentStrategy->getProperty("Show Debug Window") > 0.5f) 
+{
+    cv::Mat rawDebugMat = m_currentStrategy->getDebugFrame();
+    if (!rawDebugMat.empty()) 
+    {
+        // 1. Zaručí, že s oknem půjde volně hýbat
+        cv::namedWindow("Debug", cv::WINDOW_NORMAL);
+
+#ifdef _WIN32
+        static int lastTermCols = 0;
+        
+        CONSOLE_SCREEN_BUFFER_INFO csbi;
+        GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+        int termCols = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+
+        // Okno přepočítáme jen při změně rozlišení terminálu (při odzoomování)
+        if (termCols != lastTermCols && termCols > 0) 
         {
-            cv::Mat debugMat = m_currentStrategy->getDebugFrame();
-            if (!debugMat.empty()) 
+            lastTermCols = termCols;
+            
+            // Oprava: Najde skutečně viditelné aktivní okno terminálu
+            HWND consoleHwnd = GetForegroundWindow(); 
+            RECT consoleRect;
+            
+            if (consoleHwnd && GetWindowRect(consoleHwnd, &consoleRect))
             {
-                cv::imshow("Debug", debugMat);
-                cv::waitKey(1); 
+                // Fyzická šířka terminálu v pixelech na monitoru
+                int physConsoleW = consoleRect.right - consoleRect.left;
+                
+                // Přibližná fyzická šířka jednoho znaku
+                float physCharW = (float)physConsoleW / termCols;
+                
+                // Kolik znaků máme k dispozici v černém sloupci vedle ASCII videa
+                int sidebarChars = termCols - m_width;
+                
+                // Pokud je v terminálu místo na pravé straně, ukotvíme okno tam
+                if (sidebarChars > 5) 
+                {
+                    int targetWinW = static_cast<int>(sidebarChars * physCharW);
+                    int targetWinH = static_cast<int>(targetWinW / m_aspectRatio);
+                    
+                    // Zabrání zmenšení na nečitelnou velikost
+                    if (targetWinW < 150) targetWinW = 150;
+                    if (targetWinH < 100) targetWinH = 100;
+
+                    cv::resizeWindow("Debug", targetWinW, targetWinH);
+                    
+                    // Přesun do pravého dolního rohu (-20px jako bezpečná rezerva pro lišty)
+                    int targetX = consoleRect.right - targetWinW - 20;
+                    int targetY = consoleRect.bottom - targetWinH - 20;
+                    cv::moveWindow("Debug", targetX, targetY);
+                }
             }
         }
+#endif
+
+        // 3. Responzivní vykreslení ostrých pixelů bez vyhlazování (INTER_NEAREST)
+        cv::Rect winRect = cv::getWindowImageRect("Debug");
+        if (winRect.width > 0 && winRect.height > 0) 
+        {
+            cv::Mat displayMat;
+            cv::resize(rawDebugMat, displayMat, cv::Size(winRect.width, winRect.height), 0, 0, cv::INTER_NEAREST);
+            cv::imshow("Debug", displayMat);
+        }
+        else 
+        {
+            // Fallback pro první frame
+            cv::imshow("Debug", rawDebugMat);
+        }
+
+        cv::waitKey(1); 
+    }
+}
 
         renderHUD();
         syncFramerate();
