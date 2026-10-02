@@ -40,8 +40,9 @@ set(SOURCES
 
     src/ui/Tui.cpp
     src/ui/Property.cpp
+    src/ui/DisplayManager.cpp
+
     src/strategies/ImageUtilits.cpp
-    
     src/strategies/StrategiesFactory.cpp
     src/strategies/AbstractRenderStrategy.cpp
     src/strategies/Grayscale/BaseGrayscaleStrategy.cpp

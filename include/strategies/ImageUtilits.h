@@ -38,9 +38,9 @@ namespace ImageUtils
 
     inline uchar get8BitAnsiIndex(cv::Vec3b pixel)
     {
-        uchar r = std::round(pixel[2] * 5.0f / 255.0f);
-        uchar g = std::round(pixel[1] * 5.0f / 255.0f);
-        uchar b = std::round(pixel[0] * 5.0f / 255.0f);
+        uchar r = static_cast<uchar>(std::round(pixel[2] * 5.0f / 255.0f));
+        uchar g = static_cast<uchar>(std::round(pixel[1] * 5.0f / 255.0f));
+        uchar b = static_cast<uchar>(std::round(pixel[0] * 5.0f / 255.0f));
         return 16 + (36 * r) + (6 * g) + b;
     }
 

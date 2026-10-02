@@ -39,6 +39,10 @@ bool init();
 bool init(const std::string &videoPath);
 void start();
 void stop();
+    /**
+     * @brief Safely pops the oldest frame from the thread-safe queue. Waits if the queue is empty.
+     * @return cv::Mat The fetched frame, or an empty matrix if playback stopped.
+     */
 cv::Mat getNextFrame();
 void getOriginalSize(double &outWidth, double &outHeight);
 

@@ -13,6 +13,7 @@
 #include "strategies/ImageUtilits.h"
 #include "core/StreamManager.h"
 #include "core/InputHandler.h"
+#include "ui/DisplayManager.h"
 
 
 /**
@@ -45,18 +46,10 @@ public:
 private:
     InputHandler m_inputHandler;             ///< Handels interactions from user when in active mode (playback)
     StreamManager m_streamManager;           ///< Provider of raw video frames
-    std::vector<ImageUtils::Pixel> m_frameBuffer; ///< 1D array representing the 2D terminal screen.
-    int m_width;                             ///< Current terminal width in characters.
-    int m_height;                            ///< Current terminal height in characters.
-    double m_aspectRatio;                    ///< Original aspect ratio of the video source.
+    DisplayManager m_displayManager;         ///<administrate terminal display and CV windows
 
-    //producer-consumer synchronization
+
     std::atomic<bool> m_isEngineRunning;      ///< Atomic flag indicating if the engine is currently active.
-    std::condition_variable m_frameReady;    ///< Signaled when a new frame is added to the queue.
-    std::condition_variable m_queueNotFull;  ///< Signaled when a frame is popped, meaning space is available.
-    const size_t MAX_QUEUE_SIZE = 30;        ///< Maximum number of frames held in memory.
-
-    bool m_isLiveStream = false;             ///< Flag indicating if the source is a live webcam feed.
 
     std::unique_ptr<IRenderStrategy> m_currentStrategy; ///< Exclusively owned active rendering strategy.
 
@@ -70,28 +63,12 @@ private:
      * @return true if configuration was successfully applied.
      */
     bool setupEngineConfigs();
-
-    /**
-     * @brief Polls the OS for the current terminal dimensions and adjusts the internal frame buffer.
-     */
-    void updateTerminalSize();
-    /**
-     * @brief Safely pops the oldest frame from the thread-safe queue. Waits if the queue is empty.
-     * @return cv::Mat The fetched frame, or an empty matrix if playback stopped.
-     */
-    cv::Mat fetchFrameFromQueue();
     /**
      * @brief processes a single video frame using the active IRenderStrategy.
      * 
      * @param frame The input video frame to be processed.
      */
     void processFrameToBuffer(const cv::Mat &frame);
-    /**
-     * @brief Renders the current frame buffer to the terminal, applying ANSI color codes if enabled.
-     *  Also handles the display of the HUD with active properties and highlights the selected one.
-     * 
-     */
-    void renderBuffer();
     /**
      * @brief not implemented yet, but will be responsible for synchronizing the frame output with the video's original framerate.
      * 
@@ -111,10 +88,5 @@ private:
      * @param newStrategy Name of the new strategy to switch to. The StrategiesFactory will create the appropriate object.
      */
     void setStrategy(std::string newStrategy);
-    /**
-     * @brief Renders the heads-up display at the bottom of the terminal, showing active properties of the current strategy.
-     * 
-     */
-    void renderHUD();
 
 };
