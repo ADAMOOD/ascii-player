@@ -19,6 +19,7 @@ public:
      * @brief Resizes the frame and converts pixels to ASCII using subclass brightness logic.
      */
     void render(const cv::Mat &inputFrame, std::vector<ImageUtils::Pixel> &outBuffer, int width, int height) override;
+    
 
 protected:
     /**

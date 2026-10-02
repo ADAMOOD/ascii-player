@@ -17,6 +17,7 @@ protected:
     float m_colorTolerance = 30.0f; ///< Threshold for grouping similar colors together.
     bool m_show_debug_window = true; ///< flag for debug window
     cv::Mat m_debugFrame;
+    std::string m_strategyName;
 
 public:
     cv::Mat getDebugFrame() const override;

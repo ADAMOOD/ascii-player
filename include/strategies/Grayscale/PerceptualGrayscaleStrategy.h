@@ -17,4 +17,5 @@ public:
     {
         return static_cast<uchar>(0.299 * r + 0.587 * g + 0.114 * b);
     }
+    std::string getName() const override { return "Perceptual Grayscale"; }
 };

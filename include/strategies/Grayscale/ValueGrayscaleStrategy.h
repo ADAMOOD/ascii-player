@@ -17,5 +17,6 @@ public:
     {
         return std::max({r, g, b});
     }
+    std::string getName() const override { return "Value Grayscale"; }
 };
 

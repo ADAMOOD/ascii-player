@@ -23,4 +23,5 @@ public:
     {
         return static_cast<uchar>((r + g + b) / 3);
     }
+    std::string getName() const override { return "Naive Grayscale"; }
 };

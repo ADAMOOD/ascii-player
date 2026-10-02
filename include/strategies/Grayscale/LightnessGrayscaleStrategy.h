@@ -26,4 +26,5 @@ public:
         int max = std::max({r, g, b});
         return static_cast<uchar>((min + max) / 2);
     }
+    std::string getName() const override { return "Lightness Grayscale"; }
 };

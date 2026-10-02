@@ -90,7 +90,7 @@ void AsciiEngine::play()
 
         if (m_currentStrategy->getProperty("Show Debug Window") > 0.5f)
         {
-            m_displayManager.showDebugWindow(m_currentStrategy->getDebugFrame());
+            m_displayManager.showDebugWindow(m_currentStrategy->getDebugFrame(), frame, m_currentStrategy->getName());
         }
 
 

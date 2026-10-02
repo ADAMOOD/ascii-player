@@ -29,4 +29,5 @@ public:
         }
         return m_fillChar;
     }
+    std::string getName() const override { return "Canny Edge"; }
 };

@@ -10,4 +10,5 @@ class SobelEdgeDetectionStrategy : public BaseEdgeDetectionStrategy
 {
 public:
     void render(const cv::Mat &inputFrame, std::vector<ImageUtils::Pixel> &outBuffer, int width, int height) override;
+    std::string getName() const override { return "Sobel Edge"; }
 };

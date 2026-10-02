@@ -22,6 +22,7 @@ public:
     BaseEdgeDetectionStrategy();
     
     void setFillChar(char c) { m_fillChar = c; }
+    std::string getName() const override { return "Grayscale"; }
     
     std::vector<Property> getProperties() override;
     void setProperty(const Property property) override;

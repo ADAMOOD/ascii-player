@@ -10,6 +10,10 @@
 #include <sys/ioctl.h>
 #endif
 
+/*cv::Mat &DisplayManager::createDebugWindowContent(const cv::Mat &debugFrame, const cv::Mat &originalFrame, const std::string currentStrategy)
+{
+}*/
+
 std::vector<ImageUtils::Pixel> &DisplayManager::getBuffer()
 {
     return m_frameBuffer;
@@ -150,7 +154,7 @@ void DisplayManager::renderHUD(std::vector<Property> active_properties, int sele
     std::cout << std::flush;
 }
 
-void DisplayManager::showDebugWindow(const cv::Mat &debugFrame)
+void DisplayManager::showDebugWindow(const cv::Mat &debugFrame, const cv::Mat &originalFrame, const std::string currentStrategy)
 {
     if (!debugFrame.empty())
     {
@@ -169,64 +173,101 @@ void DisplayManager::showDebugWindow(const cv::Mat &debugFrame)
         {
             lastTermCols = termCols;
 
-            // Oprava: Najde skutečně viditelné aktivní okno terminálu
             HWND consoleHwnd = GetForegroundWindow();
             RECT consoleRect;
 
             if (consoleHwnd && GetWindowRect(consoleHwnd, &consoleRect))
             {
-                // Fyzická šířka terminálu v pixelech na monitoru
                 int physConsoleW = consoleRect.right - consoleRect.left;
+                int physConsoleH = consoleRect.bottom - consoleRect.top; // Načteme fyzickou výšku
 
-                // Přibližná fyzická šířka jednoho znaku
                 float physCharW = (float)physConsoleW / termCols;
-
-                // Kolik znaků máme k dispozici v černém sloupci vedle ASCII videa
                 int sidebarChars = termCols - m_width;
 
-                // Pokud je v terminálu místo na pravé straně, ukotvíme okno tam
                 if (sidebarChars > 5)
                 {
                     int targetWinW = static_cast<int>(sidebarChars * physCharW);
-                    int targetWinH = static_cast<int>(targetWinW / m_aspectRatio);
 
-                    // Zabrání zmenšení na nečitelnou velikost
+                    // OPRAVA: Okno nyní nastavíme na celou fyzickou výšku terminálu (mínus 60px pro lišty)
+                    int targetWinH = physConsoleH - 60;
+
                     if (targetWinW < 150)
                         targetWinW = 150;
-                    if (targetWinH < 100)
-                        targetWinH = 100;
+                    if (targetWinH < 200)
+                        targetWinH = 200; // Pojistka na výšku
 
                     cv::resizeWindow("Debug", targetWinW, targetWinH);
 
-                    // Přesun do pravého dolního rohu (-20px jako bezpečná rezerva pro lišty)
-                    int targetX = consoleRect.right - targetWinW - 20;
-                    int targetY = consoleRect.bottom - targetWinH - 20;
+                    // Ukotvíme okno do pravého horního rohu terminálu
+                    int targetX = consoleRect.right - targetWinW - 30;
+                    int targetY = consoleRect.top + 30;
                     cv::moveWindow("Debug", targetX, targetY);
                 }
             }
         }
 #endif
 
-        // 3. Responzivní vykreslení ostrých pixelů bez vyhlazování (INTER_NEAREST)
+        // 3. Vykreslení obsahu čistě na základě vnitřních rozměrů okna
         cv::Rect winRect = cv::getWindowImageRect("Debug");
         if (winRect.width > 0 && winRect.height > 0)
         {
-            cv::Mat displayMat;
-            cv::resize(debugFrame, displayMat, cv::Size(winRect.width, winRect.height), 0, 0, cv::INTER_NEAREST);
-            cv::imshow("Debug", displayMat);
-        }
-        else
-        {
-            // Fallback pro první frame
-            cv::imshow("Debug", debugFrame);
-        }
+            // Plátno musí mít absolutně přesně velikost vnitřku okna
+            cv::Mat canvas = cv::Mat::zeros(winRect.height, winRect.width, CV_8UC3);
 
-        cv::waitKey(1);
+            // Vypočítáme výšku videa tak, aby se zachoval poměr stran podle šířky sloupce
+            int imgH = static_cast<int>(winRect.width / m_aspectRatio);
+
+            // Bezpečnostní pojistka: kdyby bylo okno moc nízké, obrázky zmenšíme, aby se vešly
+            if (imgH * 2 > winRect.height)
+            {
+                imgH = winRect.height / 2;
+            }
+
+            // --- HORNÍ OBRÁZEK (Originál) ---
+            cv::Mat resizedOriginal;
+            cv::resize(originalFrame, resizedOriginal, cv::Size(winRect.width, imgH));
+            resizedOriginal.copyTo(canvas(cv::Rect(0, 0, winRect.width, imgH)));
+
+            // --- PROSTŘEDNÍ PRUH (Šipka a Text) ---
+            // Šipka začíná pod horním obrázkem a končí těsně nad spodním
+            int arrowStartY = imgH + 10;
+            int arrowEndY = winRect.height - imgH - 10;
+
+            // Kreslíme jen tehdy, pokud nám mezi obrázky zbylo místo
+            if (arrowEndY > arrowStartY)
+            {
+                cv::arrowedLine(canvas, cv::Point(winRect.width / 2, arrowStartY),
+                                cv::Point(winRect.width / 2, arrowEndY),
+                                cv::Scalar(0, 255, 255), 2);
+
+                cv::putText(canvas, currentStrategy,
+                            cv::Point(10, arrowStartY + (arrowEndY - arrowStartY) / 2),
+                            cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 255, 255), 1);
+            }
+
+            // --- SPODNÍ OBRÁZEK (Hrany) ---
+            cv::Mat rgbDebugFrame, rgbDebugFrameResized;
+            cv::cvtColor(debugFrame, rgbDebugFrame, cv::COLOR_GRAY2BGR);
+            cv::resize(rgbDebugFrame, rgbDebugFrameResized, cv::Size(winRect.width, imgH), 0, 0, cv::INTER_NEAREST);
+
+            // Vložíme obrázek přesně na spodek plátna
+            rgbDebugFrameResized.copyTo(canvas(cv::Rect(0, winRect.height - imgH, winRect.width, imgH)));
+
+            cv::imshow("Debug", canvas);
+        }
     }
+    else
+    {
+        // Fallback pro první frame
+        cv::imshow("Debug", debugFrame);
+    }
+
+    cv::waitKey(1);
 }
 
-void DisplayManager::init( double original_aspectRatio)
+
+void DisplayManager::init(double original_aspectRatio)
 {
-    m_width=0;
-    m_aspectRatio=original_aspectRatio;
+    m_width = 0;
+    m_aspectRatio = original_aspectRatio;
 }

@@ -36,6 +36,7 @@ private:
 public:
     std::vector<Property> getProperties() override;
     void setProperty(const Property property) override;
+    std::string getName() const override { return "Comic Edge"; }
 
 protected:
     /**

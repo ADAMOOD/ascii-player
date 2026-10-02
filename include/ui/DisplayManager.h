@@ -11,6 +11,7 @@ class DisplayManager{
     int m_height;                            ///< Current terminal height in characters.
     double m_aspectRatio;                    ///< Original aspect ratio of the video source.
 
+    cv::Mat& createDebugWindowContent(const cv::Mat& debugFrame, const cv::Mat& originalFrame, const std::string currentStrategy);
     public:
 
     std::vector<ImageUtils::Pixel>& getBuffer();
@@ -32,7 +33,7 @@ class DisplayManager{
      */
     void renderHUD(std::vector<Property> active_properties, int selected_property_index, int menu_start_index);
 
-    void showDebugWindow(const cv::Mat& debugFrame);
+    void showDebugWindow(const cv::Mat& debugFrame, const cv::Mat& originalFrame, const std::string currentStrategy);
 
     void init(double original_aspectRatio);
 };

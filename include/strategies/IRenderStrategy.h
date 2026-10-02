@@ -48,4 +48,8 @@ public:
      * @brief Provide a matrix of the processed video
      */
     virtual cv::Mat getDebugFrame() const = 0;
+    /**
+     * @brief Provide the name of the strategy
+     */
+    virtual std::string getName() const = 0;
 };
