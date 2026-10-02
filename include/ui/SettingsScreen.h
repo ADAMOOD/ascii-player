@@ -20,6 +20,8 @@ private:
     std::string m_target_fps;///< Desired frames per second for playback (stored as string for direct binding to input field).(NOT IMPLEMENTED YET)
     std::string m_fill_char;///< Character used for filling edge detection blank areas.
     bool m_use_webcam;///< Flag indicating whether to use the webcam.
+    std::vector<std::string> m_cameraNames;
+    int m_selectedCameraIndex = 0;
 
     std::vector<std::string> m_allStrategies; ///< List of all available rendering strategies for the dropdown menu.
     int m_selectedStrategyIndex;///< Index of the currently selected rendering strategy in the dropdown menu.

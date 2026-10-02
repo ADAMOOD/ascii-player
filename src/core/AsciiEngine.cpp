@@ -16,33 +16,6 @@
 #include <sys/ioctl.h>
 #endif
 
-void AsciiEngine::enableRawMode()
-{
-#ifdef _WIN32
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    DWORD dwMode = 0;
-    GetConsoleMode(hOut, &dwMode);
-    SetConsoleMode(hOut, dwMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-#else
-    struct termios term;
-    tcgetattr(STDIN_FILENO, &term);
-    term.c_lflag &= ~(ICANON | ECHO);
-    term.c_cc[VMIN] = 0;
-    term.c_cc[VTIME] = 0;
-    tcsetattr(STDIN_FILENO, TCSANOW, &term);
-#endif
-}
-
-void AsciiEngine::disableRawMode()
-{
-#ifndef _WIN32
-    struct termios term;
-    tcgetattr(STDIN_FILENO, &term);
-    term.c_lflag |= (ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &term);
-#endif
-}
-
 bool AsciiEngine::setupEngineConfigs()
 {
     auto strategy = ConfigManager::getValFromSettings("render_strategy");
@@ -131,8 +104,8 @@ void AsciiEngine::updateTerminalSize()
 
 void AsciiEngine::play()
 {
-    enableRawMode();
-    m_isEngineRunning=true;
+    m_inputHandler.init();
+    m_isEngineRunning = true;
     m_streamManager.start();
     std::cout << "\x1b[2J\x1b[?25l";
 
@@ -233,7 +206,7 @@ void AsciiEngine::play()
         checkUserInput();
     }
 
-    disableRawMode();
+    m_inputHandler.shutdown();
     m_streamManager.stop();
 
     std::cout << "\x1b[?25h";
@@ -359,85 +332,46 @@ void AsciiEngine::syncFramerate()
 
 void AsciiEngine::checkUserInput()
 {
-    char c = 0;
-    bool hasInput = false;
-
-// --- MULTIPLATFORM ---
-#ifdef _WIN32
-    if (_kbhit())
+    InputAction action = m_inputHandler.pollInput();
+    switch (action)
     {
-        c = _getch();
-        hasInput = true;
+    case InputAction::QUIT:
+        m_isEngineRunning = false;
+        break;
+    case InputAction::NEXT_PROPERTY:
+    {
+        if (m_selectedPropertyIndex > 0)
+            m_selectedPropertyIndex--;
+        break;
     }
-#else
-    if (read(STDIN_FILENO, &c, 1) == 1)
+
+    case InputAction::PREV_PROPERTY:
     {
-        hasInput = true;
+        if (!m_activeProperties.empty() && m_selectedPropertyIndex < static_cast<int>(m_activeProperties.size()) - 1)
+            m_selectedPropertyIndex++;
+        break;
     }
-#endif
 
-    if (hasInput)
+    case InputAction::DECREASE_VALUE:
+    case InputAction::INCREASE_VALUE:
     {
-        if (c == 'q' || c == 'Q')
-        {
-            m_isEngineRunning=false;
-
-            return;
-        }
-
-        switch (c)
-        {
-        case 'a':
-        {
-            if (m_selectedPropertyIndex > 0)
-                m_selectedPropertyIndex--;
+        if (m_activeProperties.empty())
             break;
-        }
 
-        case 'd':
+        Property prop = m_activeProperties[m_selectedPropertyIndex];
+        prop.ShiftedValue(action == InputAction::INCREASE_VALUE);
+        m_currentStrategy->setProperty(prop);
+        m_activeProperties = m_currentStrategy->getProperties();
+
+        if (m_activeProperties.empty())
         {
-            if (!m_activeProperties.empty() && m_selectedPropertyIndex < static_cast<int>(m_activeProperties.size()) - 1)
-                m_selectedPropertyIndex++;
-            break;
+            m_selectedPropertyIndex = 0;
         }
-
-        case 'w':
-        case 's':
+        else if (m_selectedPropertyIndex >= static_cast<int>(m_activeProperties.size()))
         {
-            if (m_activeProperties.empty())
-                break;
-
-            Property prop = m_activeProperties[m_selectedPropertyIndex];
-            prop.ShiftedValue(c == 'w');
-            m_currentStrategy->setProperty(prop);
-            m_activeProperties = m_currentStrategy->getProperties();
-
-            if (m_activeProperties.empty())
-            {
-                m_selectedPropertyIndex = 0;
-            }
-            else if (m_selectedPropertyIndex >= static_cast<int>(m_activeProperties.size()))
-            {
-                m_selectedPropertyIndex = m_activeProperties.size() - 1;
-            }
-            break;
+            m_selectedPropertyIndex = m_activeProperties.size() - 1;
         }
-
-        case 'x':
-        {
-            float currentVal = m_currentStrategy->getProperty("Show Debug Window");
-            Property p;
-            p.name = "Show Debug Window";
-            p.currentValue = (currentVal > 0.5f) ? 0.0f : 1.0f;
-            m_currentStrategy->setProperty(p);
-
-            m_activeProperties = m_currentStrategy->getProperties();
-            if (p.currentValue < 0.5f)
-            {
-                cv::destroyWindow("Debug");
-            }
-            break;
-        }
-        }
+        break;
+    }
     }
 }

@@ -21,7 +21,7 @@ if(WIN32)
     # On windows the user is expected to have FTXUI installed and available via CMake's find_package
     find_package(ftxui CONFIG REQUIRED)
 else()
-    # On linux we can use FetchContent to automatically download and build FTXUI as part of our build process
+    # On linux use FetchContent to automatically download and build FTXUI as part of our build process
     include(FetchContent)
     FetchContent_Declare(ftxui
       GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI
@@ -36,6 +36,7 @@ set(SOURCES
     src/core/AsciiEngine.cpp
     src/core/ConfigManager.cpp
     src/core/StreamManager.cpp
+    src/core/InputHandler.cpp
 
     src/ui/Tui.cpp
     src/ui/Property.cpp

@@ -12,6 +12,7 @@
 #include "strategies/IRenderStrategy.h"
 #include "strategies/ImageUtilits.h"
 #include "core/StreamManager.h"
+#include "core/InputHandler.h"
 
 
 /**
@@ -42,6 +43,7 @@ public:
     void play();
 
 private:
+    InputHandler m_inputHandler;             ///< Handels interactions from user when in active mode (playback)
     StreamManager m_streamManager;           ///< Provider of raw video frames
     std::vector<ImageUtils::Pixel> m_frameBuffer; ///< 1D array representing the 2D terminal screen.
     int m_width;                             ///< Current terminal width in characters.
@@ -115,18 +117,4 @@ private:
      */
     void renderHUD();
 
-    /**
-     * @brief Disables terminal line buffering and echoing.
-     * * Ensures that keyboard input is read instantly without waiting for the Enter key
-     *  and that key presses are not displayed in the terminal.
-     *  This is essential for real-time interaction during video playback.
-     */
-    void enableRawMode();
-
-    /**
-     * @brief Restores the terminal to its default canonical mode.
-     * * Re-enables line buffering and echoing so the terminal behaves normally 
-     * after the engine finishes playback.
-     */
-    void disableRawMode();
 };

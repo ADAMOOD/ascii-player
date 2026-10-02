@@ -5,7 +5,76 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <mfapi.h>
+#include <mfidl.h>
 
+#pragma comment(lib, "mfplat.lib")
+#pragma comment(lib, "mfuuid.lib")
+#pragma comment(lib, "mf.lib")
+#pragma comment(lib, "ole32.lib")
+
+std::vector<std::string> getAvailableCameras() 
+{
+    std::vector<std::string> cameras;
+    CoInitializeEx(NULL, COINIT_MULTITHREADED); // Inicializace Windows COM
+
+    IMFAttributes *pAttributes = NULL;
+    HRESULT hr = MFCreateAttributes(&pAttributes, 1);
+    if (SUCCEEDED(hr))
+    {
+        hr = pAttributes->SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
+    }
+
+    IMFActivate **ppDevices = NULL;
+    UINT32 count = 0;
+    if (SUCCEEDED(hr))
+    {
+        hr = MFEnumDeviceSources(pAttributes, &ppDevices, &count); 
+    }
+
+    if (SUCCEEDED(hr))
+    {
+        for (UINT32 i = 0; i < count; i++)
+        {
+            WCHAR *szFriendlyName = NULL;
+            UINT32 cchName;
+            
+            hr = ppDevices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &szFriendlyName, &cchName);
+            if (SUCCEEDED(hr))
+            {
+                int size_needed = WideCharToMultiByte(CP_UTF8, 0, szFriendlyName, -1, NULL, 0, NULL, NULL);
+                std::string name(size_needed, 0);
+                WideCharToMultiByte(CP_UTF8, 0, szFriendlyName, -1, &name[0], size_needed, NULL, NULL);
+                if (!name.empty() && name.back() == '\0')
+                    name.pop_back();
+
+
+                cameras.push_back(std::to_string(i) + ": " + name);
+                CoTaskMemFree(szFriendlyName);
+            }
+            else
+            {
+                cameras.push_back(std::to_string(i) + ": Unknown Device");
+            }
+            ppDevices[i]->Release();
+        }
+        CoTaskMemFree(ppDevices);
+    }
+    if (pAttributes)
+        pAttributes->Release();
+    if (cameras.empty())
+        cameras.push_back("0: Default Camera");
+    return cameras;
+}
+#else
+std::vector<std::string> getAvailableCameras()
+{
+    return {"0: Default Camera", "1: External Camera 1", "2: External Camera 2"};
+}
+#endif
 bool SettingsScreen::save()
 {
     bool success = true;
@@ -17,6 +86,7 @@ bool SettingsScreen::save()
     success &= ConfigManager::setValToSettings("target_fps", m_target_fps);
     success &= ConfigManager::setValToSettings("render_strategy", m_allStrategies[this->m_selectedStrategyIndex]);
     success &= ConfigManager::saveFillChar(m_fill_char);
+    success &= ConfigManager::setValToSettings("camera_index", std::to_string(m_selectedCameraIndex));
     return success;
 }
 
@@ -59,6 +129,7 @@ void SettingsScreen::show(Tui &tui)
         Component strategyDropdown = Dropdown(&m_allStrategies, &m_selectedStrategyIndex);
         Component menuButtons = Menu(&menuEntries, &selectedIndexMenu, menuOption);
 
+
         ftxui::CheckboxOption cbOpt = ftxui::CheckboxOption::Simple();
         cbOpt.transform = [](const ftxui::EntryState &s)
         {
@@ -70,11 +141,13 @@ void SettingsScreen::show(Tui &tui)
         };
 
         Component webcamCheckbox = Checkbox("Use webcam as a video source", &m_use_webcam, cbOpt);
+        Component cameraDropdown = Dropdown(&m_cameraNames, &m_selectedCameraIndex);
 
         auto container = Container::Vertical({
             inputPath,
             browseButton,
             webcamCheckbox,
+            cameraDropdown,
             inputFps,
             inputChar,
             strategyDropdown,
@@ -90,11 +163,13 @@ void SettingsScreen::show(Tui &tui)
             Element fpsRow   = hbox({text(" Target FPS:     ") | color(Color::GrayLight), inputFps->Render()});
             Element charRow  = hbox({text(" Fill Character: ") | color(Color::GrayLight), inputChar->Render()});
             Element stratRow = hbox({text(" Strategy:       ") | color(Color::GrayLight), strategyDropdown->Render()});
+            Element indexRow = hbox({text(" Source Camera:  ") | color(Color::GrayLight), cameraDropdown->Render()});
             
             Element content = vbox({
                 videoRow,
                 browseRow,
                 webcamRow,
+                indexRow,
                 fpsRow,
                 charRow,
                 stratRow,
@@ -123,7 +198,6 @@ void SettingsScreen::show(Tui &tui)
                 }
             }
 
-            // Zavoláme explorer z Tui
             std::string selectedFile = tui.showFileExplorer(startDir);
 
             if (!selectedFile.empty())
@@ -164,4 +238,14 @@ SettingsScreen::SettingsScreen()
         m_fill_char = ".";
     }
     m_use_webcam = ConfigManager::GetUseWebcam();
+
+    this->m_cameraNames = getAvailableCameras();
+    
+    std::string camStr = ConfigManager::getValFromSettings("camera_index");
+    if (!camStr.empty()) {
+        try { m_selectedCameraIndex = std::stoi(camStr); } catch (...) { m_selectedCameraIndex = 0; }
+    }
+    if (m_selectedCameraIndex < 0 || m_selectedCameraIndex >= static_cast<int>(m_cameraNames.size())) {
+        m_selectedCameraIndex = 0;
+    }
 }
