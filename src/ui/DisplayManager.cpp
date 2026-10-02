@@ -10,9 +10,81 @@
 #include <sys/ioctl.h>
 #endif
 
-/*cv::Mat &DisplayManager::createDebugWindowContent(const cv::Mat &debugFrame, const cv::Mat &originalFrame, const std::string currentStrategy)
+
+cv::Mat DisplayManager::drawDebugCanvas(const cv::Mat &debugFrame, const cv::Mat &originalFrame, const std::string &currentStrategy, const cv::Rect &winRect)
 {
-}*/
+    cv::Mat canvas = cv::Mat::zeros(winRect.height, winRect.width, CV_8UC3);
+    int imgH = static_cast<int>(winRect.width / m_aspectRatio);
+
+    if (imgH * 2 > winRect.height)
+    {
+        imgH = winRect.height / 2;
+    }
+
+    cv::Mat resizedOriginal;
+    cv::resize(originalFrame, resizedOriginal, cv::Size(winRect.width, imgH));
+    resizedOriginal.copyTo(canvas(cv::Rect(0, 0, winRect.width, imgH)));
+
+    int arrowStartY = imgH + 10;
+    int arrowEndY = winRect.height - imgH - 10;
+
+    if (arrowEndY > arrowStartY)
+    {
+        cv::arrowedLine(canvas, cv::Point(winRect.width / 2, arrowStartY),
+                        cv::Point(winRect.width / 2, arrowEndY),
+                        cv::Scalar(0, 255, 255), 2);
+
+        cv::putText(canvas, currentStrategy,
+                    cv::Point(10, arrowStartY + (arrowEndY - arrowStartY) / 2),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 255, 255), 1);
+    }
+
+    cv::Mat rgbDebugFrame, rgbDebugFrameResized;
+    cv::cvtColor(debugFrame, rgbDebugFrame, cv::COLOR_GRAY2BGR);
+    cv::resize(rgbDebugFrame, rgbDebugFrameResized, cv::Size(winRect.width, imgH), 0, 0);
+    rgbDebugFrameResized.copyTo(canvas(cv::Rect(0, winRect.height - imgH, winRect.width, imgH)));
+
+    return canvas;
+}
+
+void DisplayManager::updateDebugWindowPosition()
+{
+#ifdef _WIN32
+    static int lastTermCols = 0;
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+    int termCols = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+
+    if (termCols != lastTermCols && termCols > 0)
+    {
+        lastTermCols = termCols;
+        HWND consoleHwnd = GetForegroundWindow();
+        RECT consoleRect;
+
+        if (consoleHwnd && GetWindowRect(consoleHwnd, &consoleRect))
+        {
+            int physConsoleW = consoleRect.right - consoleRect.left;
+            int physConsoleH = consoleRect.bottom - consoleRect.top;
+            float physCharW = (float)physConsoleW / termCols;
+            int sidebarChars = termCols - m_width;
+
+            if (sidebarChars > 5)
+            {
+                int targetWinW = static_cast<int>(sidebarChars * physCharW);
+                int targetWinH = physConsoleH - 60;
+
+                if (targetWinW < 150) targetWinW = 150;
+                if (targetWinH < 200) targetWinH = 200;
+
+                cv::resizeWindow("Debug", targetWinW, targetWinH);
+                int targetX = consoleRect.right - targetWinW - 30;
+                int targetY = consoleRect.top + 30;
+                cv::moveWindow("Debug", targetX, targetY);
+            }
+        }
+    }
+#endif
+}
 
 std::vector<ImageUtils::Pixel> &DisplayManager::getBuffer()
 {
@@ -156,109 +228,20 @@ void DisplayManager::renderHUD(std::vector<Property> active_properties, int sele
 
 void DisplayManager::showDebugWindow(const cv::Mat &debugFrame, const cv::Mat &originalFrame, const std::string currentStrategy)
 {
-    if (!debugFrame.empty())
+    if (debugFrame.empty()) return;
+
+    cv::namedWindow("Debug", cv::WINDOW_NORMAL);
+
+    updateDebugWindowPosition();
+
+    cv::Rect winRect = cv::getWindowImageRect("Debug");
+    if (winRect.width > 0 && winRect.height > 0)
     {
-        // 1. Zaručí, že s oknem půjde volně hýbat
-        cv::namedWindow("Debug", cv::WINDOW_NORMAL);
-
-#ifdef _WIN32
-        static int lastTermCols = 0;
-
-        CONSOLE_SCREEN_BUFFER_INFO csbi;
-        GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-        int termCols = csbi.srWindow.Right - csbi.srWindow.Left + 1;
-
-        // Okno přepočítáme jen při změně rozlišení terminálu (při odzoomování)
-        if (termCols != lastTermCols && termCols > 0)
-        {
-            lastTermCols = termCols;
-
-            HWND consoleHwnd = GetForegroundWindow();
-            RECT consoleRect;
-
-            if (consoleHwnd && GetWindowRect(consoleHwnd, &consoleRect))
-            {
-                int physConsoleW = consoleRect.right - consoleRect.left;
-                int physConsoleH = consoleRect.bottom - consoleRect.top; // Načteme fyzickou výšku
-
-                float physCharW = (float)physConsoleW / termCols;
-                int sidebarChars = termCols - m_width;
-
-                if (sidebarChars > 5)
-                {
-                    int targetWinW = static_cast<int>(sidebarChars * physCharW);
-
-                    // OPRAVA: Okno nyní nastavíme na celou fyzickou výšku terminálu (mínus 60px pro lišty)
-                    int targetWinH = physConsoleH - 60;
-
-                    if (targetWinW < 150)
-                        targetWinW = 150;
-                    if (targetWinH < 200)
-                        targetWinH = 200; // Pojistka na výšku
-
-                    cv::resizeWindow("Debug", targetWinW, targetWinH);
-
-                    // Ukotvíme okno do pravého horního rohu terminálu
-                    int targetX = consoleRect.right - targetWinW - 30;
-                    int targetY = consoleRect.top + 30;
-                    cv::moveWindow("Debug", targetX, targetY);
-                }
-            }
-        }
-#endif
-
-        // 3. Vykreslení obsahu čistě na základě vnitřních rozměrů okna
-        cv::Rect winRect = cv::getWindowImageRect("Debug");
-        if (winRect.width > 0 && winRect.height > 0)
-        {
-            // Plátno musí mít absolutně přesně velikost vnitřku okna
-            cv::Mat canvas = cv::Mat::zeros(winRect.height, winRect.width, CV_8UC3);
-
-            // Vypočítáme výšku videa tak, aby se zachoval poměr stran podle šířky sloupce
-            int imgH = static_cast<int>(winRect.width / m_aspectRatio);
-
-            // Bezpečnostní pojistka: kdyby bylo okno moc nízké, obrázky zmenšíme, aby se vešly
-            if (imgH * 2 > winRect.height)
-            {
-                imgH = winRect.height / 2;
-            }
-
-            // --- HORNÍ OBRÁZEK (Originál) ---
-            cv::Mat resizedOriginal;
-            cv::resize(originalFrame, resizedOriginal, cv::Size(winRect.width, imgH));
-            resizedOriginal.copyTo(canvas(cv::Rect(0, 0, winRect.width, imgH)));
-
-            // --- PROSTŘEDNÍ PRUH (Šipka a Text) ---
-            // Šipka začíná pod horním obrázkem a končí těsně nad spodním
-            int arrowStartY = imgH + 10;
-            int arrowEndY = winRect.height - imgH - 10;
-
-            // Kreslíme jen tehdy, pokud nám mezi obrázky zbylo místo
-            if (arrowEndY > arrowStartY)
-            {
-                cv::arrowedLine(canvas, cv::Point(winRect.width / 2, arrowStartY),
-                                cv::Point(winRect.width / 2, arrowEndY),
-                                cv::Scalar(0, 255, 255), 2);
-
-                cv::putText(canvas, currentStrategy,
-                            cv::Point(10, arrowStartY + (arrowEndY - arrowStartY) / 2),
-                            cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 255, 255), 1);
-            }
-
-            // --- SPODNÍ OBRÁZEK (Hrany) ---
-            cv::Mat rgbDebugFrame, rgbDebugFrameResized;
-            cv::cvtColor(debugFrame, rgbDebugFrame, cv::COLOR_GRAY2BGR);
-            cv::resize(rgbDebugFrame, rgbDebugFrameResized, cv::Size(winRect.width, imgH), 0, 0, cv::INTER_NEAREST);
-
-            // Vložíme obrázek přesně na spodek plátna
-            rgbDebugFrameResized.copyTo(canvas(cv::Rect(0, winRect.height - imgH, winRect.width, imgH)));
-
-            cv::imshow("Debug", canvas);
-        }
+        cv::Mat canvas = drawDebugCanvas(debugFrame, originalFrame, currentStrategy, winRect);
+        cv::imshow("Debug", canvas);
     }
     else
     {
-        // Fallback pro první frame
         cv::imshow("Debug", debugFrame);
     }
 
