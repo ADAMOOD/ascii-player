@@ -48,12 +48,9 @@ private:
     StreamManager m_streamManager;           ///< Provider of raw video frames
     DisplayManager m_displayManager;         ///<administrate terminal display and CV windows
 
-
     std::atomic<bool> m_isEngineRunning;      ///< Atomic flag indicating if the engine is currently active.
 
     std::unique_ptr<IRenderStrategy> m_currentStrategy; ///< Exclusively owned active rendering strategy.
-
-
     std::vector<Property> m_activeProperties;///< List of adjustable properties for the active strategy.
     int m_selectedPropertyIndex = 0;         ///< Index of the currently highlighted property in the HUD.
     int m_menuStartIndex = 0;                ///< Index of the first visible property in the HUD (for scrolling).
