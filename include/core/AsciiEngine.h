@@ -10,10 +10,11 @@
 
 #include <opencv2/opencv.hpp>
 #include "strategies/IRenderStrategy.h"
-#include "strategies/ImageUtilits.h"
+#include "strategies/ImageUtilities.h"
 #include "core/StreamManager.h"
 #include "core/InputHandler.h"
 #include "ui/DisplayManager.h"
+#include "PerformanceMonitor.h"
 
 
 /**
@@ -44,6 +45,7 @@ public:
     void play();
 
 private:
+    PerformanceMonitor m_Pmonitor;
     InputHandler m_inputHandler;             ///< Handels interactions from user when in active mode (playback)
     StreamManager m_streamManager;           ///< Provider of raw video frames
     DisplayManager m_displayManager;         ///<administrate terminal display and CV windows

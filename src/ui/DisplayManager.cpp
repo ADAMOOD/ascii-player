@@ -14,19 +14,30 @@
 cv::Mat DisplayManager::drawDebugCanvas(const cv::Mat &debugFrame, const cv::Mat &originalFrame, const std::string &currentStrategy, const cv::Rect &winRect)
 {
     cv::Mat canvas = cv::Mat::zeros(winRect.height, winRect.width, CV_8UC3);
-    int imgH = static_cast<int>(winRect.width / m_aspectRatio);
 
-    if (imgH * 2 > winRect.height)
+    const int UI_RESERVED_SPACE = 60; 
+    
+    int maxAvailableHeightPerImage = (winRect.height - UI_RESERVED_SPACE) / 2;
+    if (maxAvailableHeightPerImage <= 0) return canvas; 
+
+    int targetW = winRect.width;
+    int targetH = static_cast<int>(targetW / m_aspectRatio);
+
+    if (targetH > maxAvailableHeightPerImage)
     {
-        imgH = winRect.height / 2;
+
+        targetH = maxAvailableHeightPerImage;
+        targetW = static_cast<int>(targetH * m_aspectRatio);
     }
 
-    cv::Mat resizedOriginal;
-    cv::resize(originalFrame, resizedOriginal, cv::Size(winRect.width, imgH));
-    resizedOriginal.copyTo(canvas(cv::Rect(0, 0, winRect.width, imgH)));
+    int offsetX = (winRect.width - targetW) / 2;
 
-    int arrowStartY = imgH + 10;
-    int arrowEndY = winRect.height - imgH - 10;
+    cv::Mat resizedOriginal;
+    cv::resize(originalFrame, resizedOriginal, cv::Size(targetW, targetH));
+    resizedOriginal.copyTo(canvas(cv::Rect(offsetX, 0, targetW, targetH)));
+
+    int arrowStartY = targetH + 10;
+    int arrowEndY = winRect.height - targetH - 10;
 
     if (arrowEndY > arrowStartY)
     {
@@ -34,15 +45,25 @@ cv::Mat DisplayManager::drawDebugCanvas(const cv::Mat &debugFrame, const cv::Mat
                         cv::Point(winRect.width / 2, arrowEndY),
                         cv::Scalar(0, 255, 255), 2);
 
-        cv::putText(canvas, currentStrategy,
-                    cv::Point(10, arrowStartY + (arrowEndY - arrowStartY) / 2),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 255, 255), 1);
-    }
+        int baseline = 0;
+        cv::Size textSize = cv::getTextSize(currentStrategy, cv::FONT_HERSHEY_DUPLEX, 0.6, 1, &baseline);
+        
+        cv::Point textOrg(20, 
+                          arrowStartY + (arrowEndY - arrowStartY) / 2 + textSize.height / 2);
 
+        cv::putText(canvas, currentStrategy, textOrg,
+                    cv::FONT_HERSHEY_DUPLEX, 0.6, cv::Scalar(255, 255, 255), 1);
+    }
     cv::Mat rgbDebugFrame, rgbDebugFrameResized;
-    cv::cvtColor(debugFrame, rgbDebugFrame, cv::COLOR_GRAY2BGR);
-    cv::resize(rgbDebugFrame, rgbDebugFrameResized, cv::Size(winRect.width, imgH), 0, 0);
-    rgbDebugFrameResized.copyTo(canvas(cv::Rect(0, winRect.height - imgH, winRect.width, imgH)));
+
+    if (debugFrame.channels() == 1) {
+        cv::cvtColor(debugFrame, rgbDebugFrame, cv::COLOR_GRAY2BGR);
+    } else {
+        rgbDebugFrame = debugFrame; 
+    }
+    
+    cv::resize(rgbDebugFrame, rgbDebugFrameResized, cv::Size(targetW, targetH));
+    rgbDebugFrameResized.copyTo(canvas(cv::Rect(offsetX, winRect.height - targetH, targetW, targetH)));
 
     return canvas;
 }
@@ -71,14 +92,14 @@ void DisplayManager::updateDebugWindowPosition()
             if (sidebarChars > 5)
             {
                 int targetWinW = static_cast<int>(sidebarChars * physCharW);
-                int targetWinH = physConsoleH - 60;
+                int targetWinH = physConsoleH - 200;
 
                 if (targetWinW < 150) targetWinW = 150;
                 if (targetWinH < 200) targetWinH = 200;
 
                 cv::resizeWindow("Debug", targetWinW, targetWinH);
                 int targetX = consoleRect.right - targetWinW - 30;
-                int targetY = consoleRect.top + 30;
+                int targetY = consoleRect.top + 100;
                 cv::moveWindow("Debug", targetX, targetY);
             }
         }
@@ -135,6 +156,11 @@ void DisplayManager::updateTerminalSize()
     }
 }
 
+void DisplayManager::printMonitoredStats(const PerformanceMonitor& pm)
+{
+    std::cout << "Max FPS: " << (int)pm.getTheoreticalFps() 
+              << " | Frame time: " << pm.getFrameTimeMs() << " ms";
+}
 void DisplayManager::renderBuffer(bool useColor, bool use8Bit, int tolerance)
 {
     std::string frameOutput;

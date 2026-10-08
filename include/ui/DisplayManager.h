@@ -1,8 +1,9 @@
 #pragma once
 #include <vector>
-#include "strategies/ImageUtilits.h"
+#include <chrono>
+#include "strategies/ImageUtilities.h"
 #include "ui/Property.h"
-
+#include "core/PerformanceMonitor.h"
 class DisplayManager
 {
 
@@ -16,12 +17,17 @@ private:
     void updateDebugWindowPosition();
 public:
     std::vector<ImageUtils::Pixel> &getBuffer();
+    double m_avgFrameTimeMs = 0.0; // Saves average time per frame
+    double m_avgTheoreticalFps = 0.0; // saves average FPS
+
     int getWidth() const;
     int getHeight() const;
     /**
      * @brief Polls the OS for the current terminal dimensions and adjusts the internal frame buffer.
      */
     void updateTerminalSize();
+
+    void printMonitoredStats(const PerformanceMonitor& pm);
     /**
      * @brief Renders the current frame buffer to the terminal, applying ANSI color codes if enabled.
      *  Also handles the display of the HUD with active properties and highlights the selected one.

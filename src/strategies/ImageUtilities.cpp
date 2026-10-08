@@ -1,4 +1,4 @@
-#include "strategies/ImageUtilits.h"
+#include "strategies/ImageUtilities.h"
 #include <cmath> 
 
 namespace ImageUtils

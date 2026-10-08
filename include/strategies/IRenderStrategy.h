@@ -1,7 +1,7 @@
 #pragma once
 #include <opencv2/opencv.hpp>
 #include "ui/Property.h"
-#include "strategies/ImageUtilits.h"
+#include "strategies/ImageUtilities.h"
 #include <vector>
 #include <string>
 

@@ -3,7 +3,7 @@
 #include "core/ConfigManager.h"
 #include "strategies/StrategiesFactory.h"
 #include "strategies/EdgeDetections/BaseEdgeDetectionStrategy.h"
-#include "strategies/ImageUtilits.h"
+#include "strategies/ImageUtilities.h"
 #include <opencv2/core/utils/logger.hpp>
 
 
@@ -70,6 +70,8 @@ void AsciiEngine::play()
     while (m_isEngineRunning)
     {
         m_displayManager.updateTerminalSize();
+
+        m_Pmonitor.startFrame();
         cv::Mat frame = m_streamManager.getNextFrame();
 
         if (frame.empty())
@@ -81,23 +83,25 @@ void AsciiEngine::play()
         }
 
         processFrameToBuffer(frame);
-
+        m_Pmonitor.endFrame();
 
         bool useColor = m_currentStrategy->getProperty("Use Color") > 0.5f;
         bool use8Bit = m_currentStrategy->getProperty("8-bit Colors") > 0.5f;
         int tolerance = static_cast<int>(m_currentStrategy->getProperty("Color Tolerance"));
+
         m_displayManager.renderBuffer(useColor, use8Bit, tolerance);
+
 
         if (m_currentStrategy->getProperty("Show Debug Window") > 0.5f)
         {
             m_displayManager.showDebugWindow(m_currentStrategy->getDebugFrame(), frame, m_currentStrategy->getName());
         }
 
-
         if (!m_activeProperties.empty() || m_currentStrategy)
         {
             m_displayManager.renderHUD(m_activeProperties, m_selectedPropertyIndex, m_menuStartIndex);
         }
+        m_displayManager.printMonitoredStats(m_Pmonitor);
         syncFramerate();
         checkUserInput();
     }

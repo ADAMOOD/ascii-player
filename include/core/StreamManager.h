@@ -10,7 +10,7 @@
 
 #include <opencv2/opencv.hpp>
 #include "strategies/IRenderStrategy.h"
-#include "strategies/ImageUtilits.h"
+#include "strategies/ImageUtilities.h"
 
 class StreamManager
 {

@@ -37,12 +37,13 @@ set(SOURCES
     src/core/ConfigManager.cpp
     src/core/StreamManager.cpp
     src/core/InputHandler.cpp
+    src/core/PerformanceMonitor.cpp
 
     src/ui/Tui.cpp
     src/ui/Property.cpp
     src/ui/DisplayManager.cpp
 
-    src/strategies/ImageUtilits.cpp
+    src/strategies/ImageUtilities.cpp
     src/strategies/StrategiesFactory.cpp
     src/strategies/AbstractRenderStrategy.cpp
     src/strategies/Grayscale/BaseGrayscaleStrategy.cpp
