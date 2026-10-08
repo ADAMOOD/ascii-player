@@ -64,7 +64,7 @@ sudo apt install libopencv-dev cmake build-essential
 ### Linux / WSL2
 
 ```bash
-git clone https://github.com/yourusername/artscii.git
+git clone https://github.com/ADAMOOD/ascii-player.git
 cd artscii
 mkdir build && cd build
 cmake ..
@@ -74,7 +74,7 @@ make
 ### Windows (MSVC + vcpkg)
 
 ```powershell
-git clone https://github.com/yourusername/artscii.git
+git clone https://github.com/ADAMOOD/ascii-player.git
 cd artscii
 mkdir build; cd build
 cmake .. -DCMAKE_TOOLCHAIN_FILE="<path_to_vcpkg>/scripts/buildsystems/vcpkg.cmake"
