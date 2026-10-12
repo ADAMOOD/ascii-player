@@ -104,6 +104,19 @@ void DisplayManager::updateDebugWindowPosition()
             }
         }
     }
+#elif __APPLE__ || __linux__
+    static bool initialized = false;
+    
+    if (!initialized)
+    {
+        int targetWinW = 350; 
+        int targetWinH = static_cast<int>((targetWinW / m_aspectRatio) * 2) + 60; 
+
+        cv::resizeWindow("Debug", targetWinW, targetWinH);
+        cv::moveWindow("Debug", 900, 100); 
+        
+        initialized = true;
+    }
 #endif
 }
 
@@ -124,14 +137,12 @@ int DisplayManager::getHeight() const
 
 void DisplayManager::updateTerminalSize()
 {
-    // --- multiplatform terminal size fetching ---
-    // windows returns the size of the whole console buffer, so we have to calculate the actual visible area
 #ifdef _WIN32
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
     int termW = csbi.srWindow.Right - csbi.srWindow.Left;
     int termH = csbi.srWindow.Bottom - csbi.srWindow.Top;
-#else // linux ioctl gives us the visible area right away
+#else
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
     int termW = w.ws_col - 1;
@@ -155,7 +166,6 @@ void DisplayManager::updateTerminalSize()
         std::cout << "\x1b[2J" << std::flush;
     }
 }
-
 void DisplayManager::printMonitoredStats(const PerformanceMonitor& pm)
 {
     std::cout << "Max FPS: " << (int)pm.getTheoreticalFps() 
@@ -257,10 +267,22 @@ void DisplayManager::showDebugWindow(const cv::Mat &debugFrame, const cv::Mat &o
     if (debugFrame.empty()) return;
 
     cv::namedWindow("Debug", cv::WINDOW_NORMAL);
-
+    //debug window always on the top
+    cv::setWindowProperty("Debug", cv::WND_PROP_TOPMOST, 1);
     updateDebugWindowPosition();
 
     cv::Rect winRect = cv::getWindowImageRect("Debug");
+
+//  macOS and Linux
+#if defined(__APPLE__) || defined(__linux__)
+    if (winRect.width <= 0 || winRect.height <= 0)
+    {
+        int fallbackW = 350;
+        int fallbackH = static_cast<int>((fallbackW / m_aspectRatio) * 2) + 60;
+        winRect = cv::Rect(0, 0, fallbackW, fallbackH);
+    }
+#endif
+
     if (winRect.width > 0 && winRect.height > 0)
     {
         cv::Mat canvas = drawDebugCanvas(debugFrame, originalFrame, currentStrategy, winRect);

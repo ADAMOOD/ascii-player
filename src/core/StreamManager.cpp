@@ -4,18 +4,6 @@
 #include "core/ConfigManager.h"
 #include <opencv2/core/utils/logger.hpp>
 
-// TODO prendat tohle do TerminalView nebo inpout manageru
-/*
-// --- OS dependent libraries  ---
-#ifdef _WIN32
-#include <windows.h>
-#include <conio.h>
-#else
-#include <termios.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#endif
-*/
 bool StreamManager::init(const std::string &videoPath)
 {
     m_isLiveStream = false;
@@ -33,7 +21,7 @@ bool StreamManager::init()
     m_isLiveStream = true;
 
     std::string camStr = ConfigManager::getValFromSettings("camera_index");
-    int camIndex = 0; // Výchozí pojistka
+    int camIndex = 0; 
     if (!camStr.empty())
     {
         try
@@ -44,19 +32,23 @@ bool StreamManager::init()
         { // TODO
         }
     }
-// --- multiplatform opening of webcam ---
+
+// multiplatform opening of webcam
 #ifdef _WIN32
-    m_cap.open(0, cv::CAP_MSMF);
+    m_cap.open(camIndex, cv::CAP_MSMF);
+#elif __APPLE__
+    m_cap.open(camIndex, cv::CAP_AVFOUNDATION);
 #else
-    m_cap.open(0, cv::CAP_V4L2);
+    m_cap.open(camIndex, cv::CAP_V4L2);
 #endif
-    // ---------------------------------------------
+
 
     if (!m_cap.isOpened())
     {
         std::cerr << "[ERROR] Could not open webcam. Check connection." << std::endl;
         return false;
     }
+    
     // --- setting webcam properties ---
     m_cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
     m_cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
