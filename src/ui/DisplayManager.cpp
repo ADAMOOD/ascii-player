@@ -220,8 +220,8 @@ void DisplayManager::renderBuffer(bool useColor, bool use8Bit, int tolerance)
 }
 void DisplayManager::printMonitoredStats()
 {
-    std::cout << "Max FPS: " << (int)m_currentFps
-              << " | Frame time: " << std::fixed << std::setprecision(2) << m_currentFrameMs << " ms";
+    std::cout << "Engine Compute FPS:: " << (int)m_currentFps
+              << " | Render Time: " << std::fixed << std::setprecision(2) << m_currentFrameMs << " ms";
 }
 
 void DisplayManager::renderHUD(std::vector<Property> active_properties, int selected_property_index, int menu_start_index)
@@ -291,8 +291,8 @@ void DisplayManager::showDebugWindow(const cv::Mat &debugFrame, const cv::Mat &o
 #if defined(__APPLE__) || defined(__linux__)
     if (winRect.width <= 0 || winRect.height <= 0)
     {
-        int fallbackW = 350;
-        int fallbackH = static_cast<int>((fallbackW / m_aspectRatio) * 2) + 60;
+        int fallbackW = 500;
+        int fallbackH = static_cast<int>((fallbackW / m_aspectRatio) * 2)-20;
         winRect = cv::Rect(0, 0, fallbackW, fallbackH);
     }
 #endif

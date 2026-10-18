@@ -118,7 +118,7 @@ void AsciiEngine::play()
 
 void AsciiEngine::setStrategy(std::string newStrategy)
 {
-    m_currentStrategy = std::move(StrategiesFactory::createStrategy(newStrategy));
+    m_currentStrategy = StrategiesFactory::createStrategy(newStrategy);
     m_activeProperties = m_currentStrategy->getProperties();
 }
 
@@ -153,6 +153,10 @@ void AsciiEngine::checkUserInput()
     InputAction action = m_inputHandler.pollInput();
     switch (action)
     {
+    // maybe implemented in future
+    case InputAction::NONE:
+    case InputAction::TOGGLE:
+        break;
     case InputAction::QUIT:
         m_isEngineRunning = false;
         break;

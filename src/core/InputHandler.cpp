@@ -15,7 +15,6 @@ InputAction InputHandler::pollInput()
     char c = 0;
     bool hasInput = false;
 
-// --- MULTIPLATFORM ---
 #ifdef _WIN32
     if (_kbhit())
     {
@@ -58,6 +57,7 @@ InputAction InputHandler::pollInput()
         }
         return InputAction::NONE;
     }
+    return InputAction::NONE;
 }
 
 bool InputHandler::init()

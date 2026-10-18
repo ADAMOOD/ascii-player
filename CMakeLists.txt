@@ -8,7 +8,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Global compiler flags for warnings and optimizations
 if(MSVC)
     add_compile_definitions(NOMINMAX)
-    # Maximum warning level and optimization flags for MSVC
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /O2 /Ot /Oi /fp:fast")
 else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O3")
@@ -62,7 +61,5 @@ target_include_directories(ASCII-PLAYER PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
 target_link_libraries(ASCII-PLAYER PRIVATE
     ${OpenCV_LIBS} 
-    ftxui::screen 
-    ftxui::dom 
     ftxui::component
 )
