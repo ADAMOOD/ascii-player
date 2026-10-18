@@ -10,6 +10,8 @@ bool AsciiEngine::setupEngineConfigs()
 {
     auto strategy = ConfigManager::getValFromSettings("render_strategy");
     this->setStrategy(strategy);
+    auto config_fpsString = ConfigManager::getValFromSettings("target_fps");
+    m_targetFPS = ConfigManager::is_number(config_fpsString) ? std::stod(config_fpsString) : 0;
 
     if (auto edgeStrategy = dynamic_cast<BaseEdgeDetectionStrategy *>(m_currentStrategy.get()))
     {
@@ -73,9 +75,9 @@ void AsciiEngine::play()
 
     while (m_isEngineRunning)
     {
+        m_Pmonitor.startFrame();
         m_displayManager.updateTerminalSize();
 
-        m_Pmonitor.startFrame();
         cv::Mat frame = m_streamManager.getNextFrame();
 
         if (frame.empty())
@@ -87,15 +89,12 @@ void AsciiEngine::play()
         }
 
         processFrameToBuffer(frame);
-        
 
         bool useColor = m_currentStrategy->getProperty("Use Color") > 0.5f;
         bool use8Bit = m_currentStrategy->getProperty("8-bit Colors") > 0.5f;
         int tolerance = static_cast<int>(m_currentStrategy->getProperty("Color Tolerance"));
 
         m_displayManager.renderBuffer(useColor, use8Bit, tolerance);
-        
-        m_Pmonitor.endFrame();
 
         if (m_currentStrategy->getProperty("Show Debug Window") > 0.5f)
         {
@@ -106,6 +105,7 @@ void AsciiEngine::play()
         {
             m_displayManager.renderHUD(m_activeProperties, m_selectedPropertyIndex, m_menuStartIndex);
         }
+        m_Pmonitor.endFrame();
         syncFramerate();
         checkUserInput();
     }
@@ -132,8 +132,20 @@ void AsciiEngine::processFrameToBuffer(const cv::Mat &frame)
 
 void AsciiEngine::syncFramerate()
 {
-    // this will be implemented in the future to sync with the video's original framerate
-    std::this_thread::sleep_for(std::chrono::milliseconds(33));
+    double orignal_streamFPS = m_streamManager.getStreamFps();
+
+    double actualWorkTimeMs = m_Pmonitor.getRawLastFrameTimeMs();
+    double finalTargetFps = orignal_streamFPS;
+    if (m_targetFPS != 0)
+    {
+        finalTargetFps = m_targetFPS;
+    }
+    double targetFrameTimeMs = 1000.0 / finalTargetFps;
+    long sleepTimeMs = targetFrameTimeMs - actualWorkTimeMs;
+    if (sleepTimeMs > 0)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepTimeMs));
+    }
 }
 
 void AsciiEngine::checkUserInput()

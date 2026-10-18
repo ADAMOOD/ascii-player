@@ -6,6 +6,7 @@
 class PerformanceMonitor
 {
 public:
+    double getRawLastFrameTimeMs() const { return m_lastRawFrameTimeMs; }
     PerformanceMonitor() { m_lastUiUpdateTime = std::chrono::high_resolution_clock::now(); }
 
     void startFrame();
@@ -26,6 +27,8 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> m_lastUiUpdateTime;
 
     bool updateUIStats(const double timeSinceLastUpdate);
+
+    double m_lastRawFrameTimeMs;
 
     double m_avgFrameTimeMs = 0.0;
     double m_UI_avgFrameTimeMs = 0.0;

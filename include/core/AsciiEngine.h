@@ -56,7 +56,7 @@ private:
     std::vector<Property> m_activeProperties;///< List of adjustable properties for the active strategy.
     int m_selectedPropertyIndex = 0;         ///< Index of the currently highlighted property in the HUD.
     int m_menuStartIndex = 0;                ///< Index of the first visible property in the HUD (for scrolling).
-
+    double m_targetFPS=0;
     /**
      * @brief Reads user configuration, initializes the rendering strategy, and sets up terminal bounds.
      * @return true if configuration was successfully applied.

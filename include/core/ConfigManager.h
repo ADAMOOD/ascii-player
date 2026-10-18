@@ -14,6 +14,7 @@ private:
     inline static const std::vector<std::string> allowed = {".mp4", ".mov", ".avi"};
 
 public:
+    static bool is_number(const std::string& s);
     /**
      * @brief Retrieves a specific configuration value by its key.
      * @param key The setting key to search for (e.g., "target_fps").

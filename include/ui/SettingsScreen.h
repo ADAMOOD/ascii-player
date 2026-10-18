@@ -25,7 +25,6 @@ private:
 
     std::vector<std::string> m_allStrategies; ///< List of all available rendering strategies for the dropdown menu.
     int m_selectedStrategyIndex;///< Index of the currently selected rendering strategy in the dropdown menu.
-    int m_selectedIndexMenu;///< Index of the currently selected menu option (Save settings, Back to main menu).
 
     /**
      * @brief Saves the current settings to the configuration file using ConfigManager. Validates inputs and returns success status.

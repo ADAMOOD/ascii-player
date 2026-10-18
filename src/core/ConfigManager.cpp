@@ -4,6 +4,13 @@
 #include <filesystem>
 #include <algorithm>
 
+bool ConfigManager::is_number(const std::string &s)
+{
+    return !s.empty() && std::find_if(s.begin(),
+                                      s.end(), [](unsigned char c)
+                                      { return !std::isdigit(c); }) == s.end();
+}
+
 std::string ConfigManager::getValFromSettings(const std::string &key)
 {
     if (!std::filesystem::exists(CONFIG_FILE))

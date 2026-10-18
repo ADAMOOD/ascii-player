@@ -13,6 +13,9 @@ void PerformanceMonitor::endFrame()
     double currentFrameTimeMs = duration / 1000.0;
     double currentFps = (currentFrameTimeMs > 0.0) ? (1000.0 / currentFrameTimeMs) : 999.0;
 
+    //for fps synchronization in engine
+    m_lastRawFrameTimeMs = currentFrameTimeMs;
+
     if (m_avgFrameTimeMs == 0.0)
     {
         m_avgFrameTimeMs = currentFrameTimeMs;
@@ -37,8 +40,8 @@ bool PerformanceMonitor::updateUIStats(const double timeSinceLastUpdate)
         m_UI_avgTheoreticalFps = m_avgTheoreticalFps;
         if (m_onUpdateCallback)
         {
-            //set callback values
-            m_onUpdateCallback(m_UI_avgTheoreticalFps,m_avgFrameTimeMs);
+            // set callback values
+            m_onUpdateCallback(m_UI_avgTheoreticalFps, m_avgFrameTimeMs);
         }
         return true;
     }
