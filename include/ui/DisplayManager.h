@@ -13,11 +13,16 @@ private:
     int m_height;                                 ///< Current terminal height in characters.
     double m_aspectRatio;                         ///< Original aspect ratio of the video source.
 
+    double m_currentFps = 0.0;
+    double m_currentFrameMs = 0.0;
+    void printMonitoredStats();
+
     cv::Mat drawDebugCanvas(const cv::Mat &debugFrame, const cv::Mat &originalFrame, const std::string &currentStrategy, const cv::Rect &winRect);
     void updateDebugWindowPosition();
+
 public:
     std::vector<ImageUtils::Pixel> &getBuffer();
-    double m_avgFrameTimeMs = 0.0; // Saves average time per frame
+    double m_avgFrameTimeMs = 0.0;    // Saves average time per frame
     double m_avgTheoreticalFps = 0.0; // saves average FPS
 
     int getWidth() const;
@@ -27,7 +32,6 @@ public:
      */
     void updateTerminalSize();
 
-    void printMonitoredStats(const PerformanceMonitor& pm);
     /**
      * @brief Renders the current frame buffer to the terminal, applying ANSI color codes if enabled.
      *  Also handles the display of the HUD with active properties and highlights the selected one.
@@ -40,7 +44,9 @@ public:
      */
     void renderHUD(std::vector<Property> active_properties, int selected_property_index, int menu_start_index);
 
+    void setStatsData(double fps, double ms);
+
     void showDebugWindow(const cv::Mat &debugFrame, const cv::Mat &originalFrame, const std::string currentStrategy);
-    
+
     void init(double original_aspectRatio);
 };

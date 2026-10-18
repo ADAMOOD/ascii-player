@@ -36,7 +36,7 @@ public:
      * @return true webcam successfully opened and initialized
      * @return false failed to access webcam or set properties
      */
-    bool init(); // pro webkameru
+    bool init(); // for webcam
 
     /**
      * @brief the main loop of the engine. It continuously fetches frames from the queue, processes them using the active IRenderStrategy, and renders the ASCII art to the terminal. It also handles user input for dynamic property adjustments and strategy switching.

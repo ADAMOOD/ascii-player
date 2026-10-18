@@ -6,7 +6,6 @@
 #include "strategies/ImageUtilities.h"
 #include <opencv2/core/utils/logger.hpp>
 
-
 bool AsciiEngine::setupEngineConfigs()
 {
     auto strategy = ConfigManager::getValFromSettings("render_strategy");
@@ -59,13 +58,18 @@ bool AsciiEngine::init()
     return setupEngineConfigs();
 }
 
-
 void AsciiEngine::play()
 {
     m_inputHandler.init();
     m_isEngineRunning = true;
     m_streamManager.start();
     std::cout << "\x1b[2J\x1b[?25l";
+
+    auto statsLambda = [this](double fps, double ms)
+    {
+        m_displayManager.setStatsData(fps, ms);
+    };
+    m_Pmonitor.setUpdateCallback(statsLambda);
 
     while (m_isEngineRunning)
     {
@@ -91,7 +95,6 @@ void AsciiEngine::play()
 
         m_displayManager.renderBuffer(useColor, use8Bit, tolerance);
 
-
         if (m_currentStrategy->getProperty("Show Debug Window") > 0.5f)
         {
             m_displayManager.showDebugWindow(m_currentStrategy->getDebugFrame(), frame, m_currentStrategy->getName());
@@ -101,7 +104,6 @@ void AsciiEngine::play()
         {
             m_displayManager.renderHUD(m_activeProperties, m_selectedPropertyIndex, m_menuStartIndex);
         }
-        m_displayManager.printMonitoredStats(m_Pmonitor);
         syncFramerate();
         checkUserInput();
     }

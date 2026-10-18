@@ -10,15 +10,15 @@
 #include <sys/ioctl.h>
 #endif
 
-
 cv::Mat DisplayManager::drawDebugCanvas(const cv::Mat &debugFrame, const cv::Mat &originalFrame, const std::string &currentStrategy, const cv::Rect &winRect)
 {
     cv::Mat canvas = cv::Mat::zeros(winRect.height, winRect.width, CV_8UC3);
 
-    const int UI_RESERVED_SPACE = 60; 
-    
+    const int UI_RESERVED_SPACE = 60;
+
     int maxAvailableHeightPerImage = (winRect.height - UI_RESERVED_SPACE) / 2;
-    if (maxAvailableHeightPerImage <= 0) return canvas; 
+    if (maxAvailableHeightPerImage <= 0)
+        return canvas;
 
     int targetW = winRect.width;
     int targetH = static_cast<int>(targetW / m_aspectRatio);
@@ -47,8 +47,8 @@ cv::Mat DisplayManager::drawDebugCanvas(const cv::Mat &debugFrame, const cv::Mat
 
         int baseline = 0;
         cv::Size textSize = cv::getTextSize(currentStrategy, cv::FONT_HERSHEY_DUPLEX, 0.6, 1, &baseline);
-        
-        cv::Point textOrg(20, 
+
+        cv::Point textOrg(20,
                           arrowStartY + (arrowEndY - arrowStartY) / 2 + textSize.height / 2);
 
         cv::putText(canvas, currentStrategy, textOrg,
@@ -56,12 +56,15 @@ cv::Mat DisplayManager::drawDebugCanvas(const cv::Mat &debugFrame, const cv::Mat
     }
     cv::Mat rgbDebugFrame, rgbDebugFrameResized;
 
-    if (debugFrame.channels() == 1) {
+    if (debugFrame.channels() == 1)
+    {
         cv::cvtColor(debugFrame, rgbDebugFrame, cv::COLOR_GRAY2BGR);
-    } else {
-        rgbDebugFrame = debugFrame; 
     }
-    
+    else
+    {
+        rgbDebugFrame = debugFrame;
+    }
+
     cv::resize(rgbDebugFrame, rgbDebugFrameResized, cv::Size(targetW, targetH));
     rgbDebugFrameResized.copyTo(canvas(cv::Rect(offsetX, winRect.height - targetH, targetW, targetH)));
 
@@ -94,8 +97,10 @@ void DisplayManager::updateDebugWindowPosition()
                 int targetWinW = static_cast<int>(sidebarChars * physCharW);
                 int targetWinH = physConsoleH - 200;
 
-                if (targetWinW < 150) targetWinW = 150;
-                if (targetWinH < 200) targetWinH = 200;
+                if (targetWinW < 150)
+                    targetWinW = 150;
+                if (targetWinH < 200)
+                    targetWinH = 200;
 
                 cv::resizeWindow("Debug", targetWinW, targetWinH);
                 int targetX = consoleRect.right - targetWinW - 30;
@@ -106,15 +111,15 @@ void DisplayManager::updateDebugWindowPosition()
     }
 #elif __APPLE__ || __linux__
     static bool initialized = false;
-    
+
     if (!initialized)
     {
-        int targetWinW = 350; 
-        int targetWinH = static_cast<int>((targetWinW / m_aspectRatio) * 2) + 60; 
+        int targetWinW = 350;
+        int targetWinH = static_cast<int>((targetWinW / m_aspectRatio) * 2) + 60;
 
         cv::resizeWindow("Debug", targetWinW, targetWinH);
-        cv::moveWindow("Debug", 900, 100); 
-        
+        cv::moveWindow("Debug", 900, 100);
+
         initialized = true;
     }
 #endif
@@ -166,11 +171,7 @@ void DisplayManager::updateTerminalSize()
         std::cout << "\x1b[2J" << std::flush;
     }
 }
-void DisplayManager::printMonitoredStats(const PerformanceMonitor& pm)
-{
-    std::cout << "Max FPS: " << (int)pm.getTheoreticalFps() 
-              << " | Frame time: " << pm.getFrameTimeMs() << " ms";
-}
+
 void DisplayManager::renderBuffer(bool useColor, bool use8Bit, int tolerance)
 {
     std::string frameOutput;
@@ -216,6 +217,11 @@ void DisplayManager::renderBuffer(bool useColor, bool use8Bit, int tolerance)
     frameOutput += "\n";
     std::cout << "\x1b[H" << frameOutput << std::flush;
 }
+void DisplayManager::printMonitoredStats()
+{
+    std::cout << "Max FPS: " << (int)m_currentFps
+              << " | Frame time: " << m_avgFrameTimeMs << " ms";
+}
 
 void DisplayManager::renderHUD(std::vector<Property> active_properties, int selected_property_index, int menu_start_index)
 {
@@ -259,21 +265,28 @@ void DisplayManager::renderHUD(std::vector<Property> active_properties, int sele
             std::cout << plainText;
         }
     }
+    printMonitoredStats();
     std::cout << std::flush;
+}
+
+void DisplayManager::setStatsData(double fps, double ms)
+{
+    m_currentFps = fps;
+    m_currentFrameMs = ms;
 }
 
 void DisplayManager::showDebugWindow(const cv::Mat &debugFrame, const cv::Mat &originalFrame, const std::string currentStrategy)
 {
-    if (debugFrame.empty()) return;
+    if (debugFrame.empty())
+        return;
 
     cv::namedWindow("Debug", cv::WINDOW_NORMAL);
-    //debug window always on the top
+    // debug window always on the top layer
     cv::setWindowProperty("Debug", cv::WND_PROP_TOPMOST, 1);
     updateDebugWindowPosition();
 
     cv::Rect winRect = cv::getWindowImageRect("Debug");
 
-//  macOS and Linux
 #if defined(__APPLE__) || defined(__linux__)
     if (winRect.width <= 0 || winRect.height <= 0)
     {
@@ -295,7 +308,6 @@ void DisplayManager::showDebugWindow(const cv::Mat &debugFrame, const cv::Mat &o
 
     cv::waitKey(1);
 }
-
 
 void DisplayManager::init(double original_aspectRatio)
 {
