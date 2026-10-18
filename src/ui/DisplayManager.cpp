@@ -1,5 +1,6 @@
 #include "ui/DisplayManager.h"
 #include <iostream>
+#include <iomanip>
 // --- OS dependent libraries  ---
 #ifdef _WIN32
 #include <windows.h>
@@ -220,7 +221,7 @@ void DisplayManager::renderBuffer(bool useColor, bool use8Bit, int tolerance)
 void DisplayManager::printMonitoredStats()
 {
     std::cout << "Max FPS: " << (int)m_currentFps
-              << " | Frame time: " << m_avgFrameTimeMs << " ms";
+              << " | Frame time: " << std::fixed << std::setprecision(2) << m_currentFrameMs << " ms";
 }
 
 void DisplayManager::renderHUD(std::vector<Property> active_properties, int selected_property_index, int menu_start_index)
