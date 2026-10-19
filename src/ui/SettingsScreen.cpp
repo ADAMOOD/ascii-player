@@ -16,7 +16,7 @@
 #pragma comment(lib, "mf.lib")
 #pragma comment(lib, "ole32.lib")
 
-std::vector<std::string> getAvailableCameras() 
+std::vector<std::string> getAvailableCameras()
 {
     std::vector<std::string> cameras;
     CoInitializeEx(NULL, COINIT_MULTITHREADED); // Inicializace Windows COM
@@ -32,7 +32,7 @@ std::vector<std::string> getAvailableCameras()
     UINT32 count = 0;
     if (SUCCEEDED(hr))
     {
-        hr = MFEnumDeviceSources(pAttributes, &ppDevices, &count); 
+        hr = MFEnumDeviceSources(pAttributes, &ppDevices, &count);
     }
 
     if (SUCCEEDED(hr))
@@ -41,7 +41,7 @@ std::vector<std::string> getAvailableCameras()
         {
             WCHAR *szFriendlyName = NULL;
             UINT32 cchName;
-            
+
             hr = ppDevices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &szFriendlyName, &cchName);
             if (SUCCEEDED(hr))
             {
@@ -50,7 +50,6 @@ std::vector<std::string> getAvailableCameras()
                 WideCharToMultiByte(CP_UTF8, 0, szFriendlyName, -1, &name[0], size_needed, NULL, NULL);
                 if (!name.empty() && name.back() == '\0')
                     name.pop_back();
-
 
                 cameras.push_back(std::to_string(i) + ": " + name);
                 CoTaskMemFree(szFriendlyName);
@@ -87,6 +86,15 @@ bool SettingsScreen::save()
     success &= ConfigManager::setValToSettings("render_strategy", m_allStrategies[this->m_selectedStrategyIndex]);
     success &= ConfigManager::saveFillChar(m_fill_char);
     success &= ConfigManager::setValToSettings("camera_index", std::to_string(m_selectedCameraIndex));
+
+    if (m_measure_performance)
+    {
+        success &= ConfigManager::setValToSettings("measure_performance", "true");
+    }
+    else
+    {
+        success &= ConfigManager::setValToSettings("measure_performance", "false");
+    }
     return success;
 }
 
@@ -118,7 +126,7 @@ void SettingsScreen::show(Tui &tui)
             }
         };
 
-        // --- COMPONENTS (LOGIC) ---
+        //COMPONENTS (LOGIC)
         Component inputPath = Input(&m_videoPath, "please select a video file");
         Component browseButton = Button("Choose video from explorer", [&]
                                         {
@@ -128,7 +136,6 @@ void SettingsScreen::show(Tui &tui)
         Component inputChar = Input(&m_fill_char, "please enter fill character for edge strategies");
         Component strategyDropdown = Dropdown(&m_allStrategies, &m_selectedStrategyIndex);
         Component menuButtons = Menu(&menuEntries, &selectedIndexMenu, menuOption);
-
 
         ftxui::CheckboxOption cbOpt = ftxui::CheckboxOption::Simple();
         cbOpt.transform = [](const ftxui::EntryState &s)
@@ -143,6 +150,8 @@ void SettingsScreen::show(Tui &tui)
         Component webcamCheckbox = Checkbox("Use webcam as a video source", &m_use_webcam, cbOpt);
         Component cameraDropdown = Dropdown(&m_cameraNames, &m_selectedCameraIndex);
 
+        Component mesure_performanceCheckbox = Checkbox("Mesure next Performance run", &m_measure_performance, cbOpt);
+
         auto container = Container::Vertical({
             inputPath,
             browseButton,
@@ -151,15 +160,17 @@ void SettingsScreen::show(Tui &tui)
             inputFps,
             inputChar,
             strategyDropdown,
+            mesure_performanceCheckbox,
             menuButtons,
         });
 
-        // --- RENDERER ---
+        //RENDERER
         auto renderer = Renderer(container, [&]
                                  {    
             Element videoRow = hbox({text(" Video:          ") | color(Color::GrayLight), inputPath->Render()});
-            Element browseRow = hbox({text("                 "), browseButton->Render()}); // Odsazení pro tlačítko
+            Element browseRow = hbox({text("                 "), browseButton->Render()});
             Element webcamRow = hbox({text(" Webcam:         ") | color(Color::GrayLight), webcamCheckbox->Render()});
+            Element PerformanceRow = hbox({text(" Performance:         ") | color(Color::GrayLight), mesure_performanceCheckbox->Render()});
             Element fpsRow   = hbox({text(" Target FPS:     ") | color(Color::GrayLight), inputFps->Render()});
             Element charRow  = hbox({text(" Fill Character: ") | color(Color::GrayLight), inputChar->Render()});
             Element stratRow = hbox({text(" Strategy:       ") | color(Color::GrayLight), strategyDropdown->Render()});
@@ -174,6 +185,8 @@ void SettingsScreen::show(Tui &tui)
                 charRow,
                 stratRow,
                 separator(),
+                PerformanceRow,
+                separator(),
                 text(statusMessage) | center, 
                 separator(),
                 menuButtons->Render(),
@@ -183,8 +196,6 @@ void SettingsScreen::show(Tui &tui)
 
         // loop for user interaction with the settings screen
         screen.Loop(renderer);
-
-        //-- AFTER LOOP (WHEN USER EXITS THE SETTINGS SCREEN) ---
 
         if (openExplorer)
         {
@@ -237,15 +248,26 @@ SettingsScreen::SettingsScreen()
     {
         m_fill_char = ".";
     }
-    m_use_webcam = ConfigManager::GetUseWebcam();
+    
+    m_use_webcam = ConfigManager::GetBoolFromSettings("use_webcam");
+    m_measure_performance = ConfigManager::GetBoolFromSettings("measure_performance");
 
     this->m_cameraNames = getAvailableCameras();
-    
+
     std::string camStr = ConfigManager::getValFromSettings("camera_index");
-    if (!camStr.empty()) {
-        try { m_selectedCameraIndex = std::stoi(camStr); } catch (...) { m_selectedCameraIndex = 0; }
+    if (!camStr.empty())
+    {
+        try
+        {
+            m_selectedCameraIndex = std::stoi(camStr);
+        }
+        catch (...)
+        {
+            m_selectedCameraIndex = 0;
+        }
     }
-    if (m_selectedCameraIndex < 0 || m_selectedCameraIndex >= static_cast<int>(m_cameraNames.size())) {
+    if (m_selectedCameraIndex < 0 || m_selectedCameraIndex >= static_cast<int>(m_cameraNames.size()))
+    {
         m_selectedCameraIndex = 0;
     }
 }

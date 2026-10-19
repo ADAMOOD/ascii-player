@@ -20,6 +20,7 @@ private:
     std::string m_target_fps;///< Desired frames per second for playback (stored as string for direct binding to input field).(NOT IMPLEMENTED YET)
     std::string m_fill_char;///< Character used for filling edge detection blank areas.
     bool m_use_webcam;///< Flag indicating whether to use the webcam.
+    bool m_measure_performance;///< Flag indicating whether to mesure performance of the next engine run
     std::vector<std::string> m_cameraNames;
     int m_selectedCameraIndex = 0;
 

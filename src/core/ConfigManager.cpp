@@ -4,6 +4,12 @@
 #include <filesystem>
 #include <algorithm>
 
+std::string ConfigManager::getFileName(std::string path)
+{
+    std::filesystem::path filePath(path);
+    return filePath.filename().string();
+}
+
 bool ConfigManager::is_number(const std::string &s)
 {
     return !s.empty() && std::find_if(s.begin(),
@@ -30,6 +36,7 @@ std::string ConfigManager::getValFromSettings(const std::string &key)
     return "";
 }
 
+// TODO: Improove so that the settings are not created each function call
 bool ConfigManager::setValToSettings(const std::string &key, const std::string &value)
 {
     const std::string TEMP_FILE = "settings.tmp";
@@ -120,10 +127,10 @@ bool ConfigManager::saveVideoPath(const std::string &path)
     return false;
 }
 
-bool ConfigManager::GetUseWebcam()
+bool ConfigManager::GetBoolFromSettings(const std::string &key)
 {
-    std::string webcam = getValFromSettings("use_webcam");
-    return webcam == "true" || webcam == "1";
+    std::string property = getValFromSettings(key);
+    return property == "true" || property == "1";
 }
 
 bool ConfigManager::saveFillChar(const std::string &character)

@@ -12,6 +12,7 @@ bool AsciiEngine::setupEngineConfigs()
     this->setStrategy(strategy);
     auto config_fpsString = ConfigManager::getValFromSettings("target_fps");
     m_targetFPS = ConfigManager::is_number(config_fpsString) ? std::stod(config_fpsString) : 0;
+    m_measure_performance = ConfigManager::GetBoolFromSettings("measure_performance");
 
     if (auto edgeStrategy = dynamic_cast<BaseEdgeDetectionStrategy *>(m_currentStrategy.get()))
     {
@@ -66,6 +67,21 @@ void AsciiEngine::play()
     m_isEngineRunning = true;
     m_streamManager.start();
     std::cout << "\x1b[2J\x1b[?25l";
+
+    if (m_measure_performance)
+    {
+        auto strategy = ConfigManager::getValFromSettings("render_strategy");
+        std::string videoStream;
+        if (ConfigManager::GetBoolFromSettings("use_webcam"))
+        {
+            videoStream = "webcam";
+        }
+        else
+        {
+            videoStream = ConfigManager::getFileName(ConfigManager::loadVideoPath());
+        }
+        m_Pmonitor.initLogging("../performance/", strategy, videoStream);
+    }
 
     auto statsLambda = [this](double fps, double ms)
     {

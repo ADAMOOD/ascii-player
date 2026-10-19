@@ -78,5 +78,5 @@ std::string Tui::showFileExplorer(const std::string &directory)
 void Tui::showOptionsMenu()
 {
     SettingsScreen screen;
-    screen.show(*this);//reference to Tui is passed to SettingsScreen to allow it to call showFileExplorer when the user wants to change the video path.
+    screen.show(*this); //reference to Tui is passed to SettingsScreen to allow it to call showFileExplorer when the user wants to change the video path.
 }

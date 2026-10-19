@@ -45,6 +45,7 @@ public:
     void play();
 
 private:
+    bool m_measure_performance;             ///< flag that indicates whether to log measured performance or not
     PerformanceMonitor m_Pmonitor;
     InputHandler m_inputHandler;             ///< Handels interactions from user when in active mode (playback)
     StreamManager m_streamManager;           ///< Provider of raw video frames

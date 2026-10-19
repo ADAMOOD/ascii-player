@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <map>
 
 /**
  * @class ConfigManager
@@ -14,6 +15,7 @@ private:
     inline static const std::vector<std::string> allowed = {".mp4", ".mov", ".avi"};
 
 public:
+    static std::string getFileName(std::string path);
     static bool is_number(const std::string& s);
     /**
      * @brief Retrieves a specific configuration value by its key.
@@ -29,6 +31,7 @@ public:
      * @return true if the setting was successfully saved, false otherwise.
      */
     static bool setValToSettings(const std::string &key, const std::string &value);
+    static bool updateMultipleSettings(const std::map<std::string, std::string>& newItems);//TODO
 
     /**
      * @brief Checks if the provided file extension is supported by the engine.
@@ -58,10 +61,10 @@ public:
     static bool saveVideoPath(const std::string &path);
 
     /**
-     * @brief Checks if the user is currently set to use the webcam.
-     * @return true if webcam mode is enabled.
+     * @brief Checks for the value of bool property &key
+     * @return true if property key is set to true or 1
      */
-    static bool GetUseWebcam();
+    static bool GetBoolFromSettings(const std::string &key);
 
     /**
      * @brief Saves the character used for filling edge detection areas.

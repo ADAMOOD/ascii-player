@@ -45,7 +45,7 @@ int main()
         {
         case 0: // ASCII video convertor
         {
-            bool useWebcam = ConfigManager::GetUseWebcam();
+            bool useWebcam = ConfigManager::GetBoolFromSettings("use_webcam");
             AsciiEngine engine;
             
             if (!useWebcam)

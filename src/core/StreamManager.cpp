@@ -33,7 +33,7 @@ bool StreamManager::init()
         }
     }
 
-// multiplatform opening of webcam
+// multiplatform openingwebcam
 #ifdef _WIN32
     m_cap.open(camIndex, cv::CAP_MSMF);
 #elif __APPLE__
@@ -48,7 +48,7 @@ bool StreamManager::init()
         return false;
     }
 
-    // --- setting webcam properties ---
+    //setting webcam properties
     m_cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
     m_cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
     m_cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
