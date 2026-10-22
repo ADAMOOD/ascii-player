@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.14)
 project(AsciiPlayer)
 
+
+#to allow CGi on apple
+set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "Minimum OS X version" FORCE)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -39,6 +43,9 @@ set(SOURCES
     src/core/InputHandler.cpp
     src/core/PerformanceMonitor.cpp
 
+    src/core/screenCaptures/ScreenCaptureFactory.cpp
+    src/core/screenCaptures/MacScreenCapture.mm
+
     src/ui/Tui.cpp
     src/ui/Property.cpp
     src/ui/DisplayManager.cpp
@@ -63,3 +70,8 @@ target_link_libraries(ASCII-PLAYER PRIVATE
     ${OpenCV_LIBS} 
     ftxui::component
 )
+
+# Exclusive for Apple
+if(APPLE)
+    target_link_libraries(ASCII-PLAYER PRIVATE "-framework CoreGraphics" "-framework CoreFoundation")
+endif()

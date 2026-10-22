@@ -16,6 +16,8 @@
 #include "ui/DisplayManager.h"
 #include "PerformanceMonitor.h"
 
+#include "core/IScreenCapture.h"
+
 
 /**
  * @class AsciiEngine
@@ -45,6 +47,8 @@ public:
     void play();
 
 private:
+     std::unique_ptr<IScreenCapture> m_screenCapture;
+
     bool m_measure_performance;             ///< flag that indicates whether to log measured performance or not
     PerformanceMonitor m_Pmonitor;
     InputHandler m_inputHandler;             ///< Handels interactions from user when in active mode (playback)

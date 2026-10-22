@@ -4,12 +4,17 @@
 #include "strategies/StrategiesFactory.h"
 #include "strategies/EdgeDetections/BaseEdgeDetectionStrategy.h"
 #include "strategies/ImageUtilities.h"
+#include <opencv2/core/mat.hpp>
 #include <opencv2/core/utils/logger.hpp>
+#include "core/screenCaptures/ScreenCaptureFactory.h"
+
 
 bool AsciiEngine::setupEngineConfigs()
 {
     auto strategy = ConfigManager::getValFromSettings("render_strategy");
     this->setStrategy(strategy);
+    m_screenCapture = ScreenCaptureFactory::create();
+
     auto config_fpsString = ConfigManager::getValFromSettings("target_fps");
     m_targetFPS = ConfigManager::is_number(config_fpsString) ? std::stod(config_fpsString) : 0;
     m_measure_performance = ConfigManager::GetBoolFromSettings("measure_performance");
@@ -20,7 +25,6 @@ bool AsciiEngine::setupEngineConfigs()
         char fill = savedChar.empty() ? ' ' : savedChar[0];
         edgeStrategy->setFillChar(fill);
     }
-
     m_menuStartIndex = 0;
     m_selectedPropertyIndex = 0;
     double origWidth;

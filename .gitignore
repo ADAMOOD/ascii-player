@@ -3,3 +3,4 @@ assets/
 studyMaterial/algorithms.md
 all_project_code.txt
 .vscode/
+.cache/
