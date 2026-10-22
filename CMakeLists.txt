@@ -54,6 +54,9 @@ set(SOURCES
 
     src/ui/SettingsScreen.cpp
 )
+#openGL experiment
+add_executable(opengl_test src/opengl_sandbox.cpp)
+target_link_libraries(opengl_test glfw glad glm)
 
 add_executable(ASCII-PLAYER ${SOURCES})
 
