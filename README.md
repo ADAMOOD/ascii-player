@@ -264,7 +264,7 @@ Settings are persisted in `settings.conf` (key=value format) in the working dire
 
 ## Planned / TODO
 
-- [ ] Actual FPS-based frame synchronization (currently a fixed 33 ms sleep)
+- [x] Actual FPS-based frame synchronization (currently a fixed 33 ms sleep)
 - [ ] Background color rendering (ANSI `48;2;R;G;B` sequences — `bgColor` field already present in `Pixel`)
 - [ ] Audio playback sync
 - [ ] Enable ANSI Virtual Terminal Processing automatically on Windows (currently requires Windows Terminal)

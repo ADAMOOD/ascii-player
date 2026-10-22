@@ -1,7 +1,7 @@
 #include "ui/DisplayManager.h"
 #include <iostream>
 #include <iomanip>
-// --- OS dependent libraries  ---
+
 #ifdef _WIN32
 #include <windows.h>
 #include <conio.h>
@@ -292,7 +292,7 @@ void DisplayManager::showDebugWindow(const cv::Mat &debugFrame, const cv::Mat &o
     if (winRect.width <= 0 || winRect.height <= 0)
     {
         int fallbackW = 500;
-        int fallbackH = static_cast<int>((fallbackW / m_aspectRatio) * 2)-20;
+        int fallbackH = static_cast<int>((fallbackW / m_aspectRatio) * 2)-50;
         winRect = cv::Rect(0, 0, fallbackW, fallbackH);
     }
 #endif

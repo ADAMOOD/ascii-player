@@ -13,7 +13,7 @@ generateBaseEdgeData(inputFrame, coloredResizedFrame, magnitudes, angles, width,
         {
             if (m_show_debug_window)
     {
-        // Sobelovy magnituda jsou také 32-bitové floaty, převedeme na 8-bitový grayscale
+        // sobels magitudes are 32bit floats
         magnitudes.convertTo(m_debugFrame, CV_8UC1);
     }
             for (int x = 0; x < width; x++)

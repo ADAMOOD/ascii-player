@@ -52,7 +52,7 @@ void AdvancedEdgeDetectionStrategy::render(const cv::Mat &inputFrame, std::vecto
     {
         if (m_show_debug_window)
     {
-        // Převod 32-bitových floatů z NMS na 8-bitový grayscale pro zobrazení
+        // impoetant conversion
         nmsMagnitudes.convertTo(m_debugFrame, CV_8UC1);
     }
         for (int x = 0; x < width; x++)
