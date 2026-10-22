@@ -20,6 +20,9 @@ endif()
 # On linux, we need to link against pthread for threading support (used by FTXUI and our own threading)
 find_package(OpenCV REQUIRED)
 
+find_package(SDL2 REQUIRED)
+find_package(SDL2_ttf REQUIRED)
+
 # --- FTXUI ---
 if(WIN32)
     # On windows the user is expected to have FTXUI installed and available via CMake's find_package
@@ -37,7 +40,10 @@ endif()
 set(SOURCES 
     src/main.cpp 
 
+    src/core/CoreEngine.cpp
     src/core/TerminalEngine.cpp
+    src/core/OverlayEngine.cpp
+
     src/core/ConfigManager.cpp
     src/core/StreamManager.cpp
     src/core/InputHandler.cpp
@@ -67,8 +73,10 @@ add_executable(ASCII-PLAYER ${SOURCES})
 target_include_directories(ASCII-PLAYER PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
 target_link_libraries(ASCII-PLAYER PRIVATE
-    ${OpenCV_LIBS} 
+    ${OpenCV_LIBS}
     ftxui::component
+    ${SDL2_LIBRARIES}
+    ${SDL2_TTF_LIBRARIES}
 )
 
 # Exclusive for Apple

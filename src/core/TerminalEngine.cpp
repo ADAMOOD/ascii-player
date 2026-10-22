@@ -1,19 +1,16 @@
 #include "core/TerminalEngine.h"
 #include <iostream>
 #include "core/ConfigManager.h"
-#include "strategies/StrategiesFactory.h"
 #include "strategies/EdgeDetections/BaseEdgeDetectionStrategy.h"
-#include "strategies/ImageUtilities.h"
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/utils/logger.hpp>
-#include "core/screenCaptures/ScreenCaptureFactory.h"
 
 
-bool AsciiEngine::setupEngineConfigs()
+
+bool TerminalEngine::setupEngineConfigs()
 {
     auto strategy = ConfigManager::getValFromSettings("render_strategy");
     this->setStrategy(strategy);
-    m_screenCapture = ScreenCaptureFactory::create();
 
     auto config_fpsString = ConfigManager::getValFromSettings("target_fps");
     m_targetFPS = ConfigManager::is_number(config_fpsString) ? std::stod(config_fpsString) : 0;
@@ -45,7 +42,7 @@ bool AsciiEngine::setupEngineConfigs()
     return true;
 }
 
-bool AsciiEngine::init(const std::string &videoPath)
+bool TerminalEngine::init(const std::string &videoPath)
 {
     if (!m_streamManager.init(videoPath))
     {
@@ -55,7 +52,7 @@ bool AsciiEngine::init(const std::string &videoPath)
     return setupEngineConfigs();
 }
 
-bool AsciiEngine::init()
+bool TerminalEngine::init()
 {
     if (!m_streamManager.init())
     {
@@ -65,7 +62,7 @@ bool AsciiEngine::init()
     return setupEngineConfigs();
 }
 
-void AsciiEngine::play()
+void TerminalEngine::play()
 {
     m_inputHandler.init();
     m_isEngineRunning = true;
@@ -136,13 +133,7 @@ void AsciiEngine::play()
     std::cout << "\x1b[?25h";
 }
 
-void AsciiEngine::setStrategy(std::string newStrategy)
-{
-    m_currentStrategy = StrategiesFactory::createStrategy(newStrategy);
-    m_activeProperties = m_currentStrategy->getProperties();
-}
-
-void AsciiEngine::processFrameToBuffer(const cv::Mat &frame)
+void TerminalEngine::processFrameToBuffer(const cv::Mat &frame)
 {
     if (m_currentStrategy)
     {
@@ -150,7 +141,7 @@ void AsciiEngine::processFrameToBuffer(const cv::Mat &frame)
     }
 }
 
-void AsciiEngine::syncFramerate()
+void TerminalEngine::syncFramerate()
 {
     double orignal_streamFPS = m_streamManager.getStreamFps();
 
@@ -168,7 +159,7 @@ void AsciiEngine::syncFramerate()
     }
 }
 
-void AsciiEngine::checkUserInput()
+void TerminalEngine::checkUserInput()
 {
     InputAction action = m_inputHandler.pollInput();
     switch (action)

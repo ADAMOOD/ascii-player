@@ -24,6 +24,7 @@ int main()
 
     std::vector<std::string> mainMenu = {
         "ASCII video convertor",
+        "ASCII Window Overlay",
         "Options",
         "[ Exit ]"
     };
@@ -46,7 +47,7 @@ int main()
         case 0: // ASCII video convertor
         {
             bool useWebcam = ConfigManager::GetBoolFromSettings("use_webcam");
-            AsciiEngine engine;
+            TerminalEngine engine;
             
             if (!useWebcam)
             {
@@ -82,7 +83,7 @@ int main()
             }
             break;
         }
-        case 1: // settings
+        case 2: // settings
         {
             tui.showOptionsMenu();
             break;
