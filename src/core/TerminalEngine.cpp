@@ -1,4 +1,4 @@
-#include "core/AsciiEngine.h"
+#include "core/TerminalEngine.h"
 #include <iostream>
 #include "core/ConfigManager.h"
 #include "strategies/StrategiesFactory.h"

@@ -37,7 +37,7 @@ endif()
 set(SOURCES 
     src/main.cpp 
 
-    src/core/AsciiEngine.cpp
+    src/core/TerminalEngine.cpp
     src/core/ConfigManager.cpp
     src/core/StreamManager.cpp
     src/core/InputHandler.cpp

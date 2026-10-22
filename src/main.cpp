@@ -5,7 +5,7 @@
  * the lifecycle of the AsciiEngine for both video files and webcam input.
  */
 
-#include "core/AsciiEngine.h"
+#include "core/TerminalEngine.h"
 #include "ui/Tui.h"
 #include "core/ConfigManager.h"
 #include <iostream>
