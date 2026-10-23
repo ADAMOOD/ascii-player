@@ -1,17 +1,12 @@
 #pragma once
 #include <string>
 
-#include <memory>
-
 #include <opencv2/opencv.hpp>
 
-#include "core/ConfigManager.h"
+
 #include "core/StreamManager.h"
 #include "core/InputHandler.h"
 #include "ui/DisplayManager.h"
-
-
-#include "core/IScreenCapture.h"
 #include "core/CoreEngine.h"
 
 
@@ -47,12 +42,7 @@ private:
     InputHandler m_inputHandler;             ///< Handels interactions from user when in active mode (playback)
     StreamManager m_streamManager;           ///< Provider of raw video frames
     DisplayManager m_displayManager;         ///<administrate terminal display and CV windows
-        /**
-     * @brief processes a single video frame using the active IRenderStrategy.
-     * 
-     * @param frame The input video frame to be processed.
-     */
-    void processFrameToBuffer(const cv::Mat &frame);
+
             /**
      * @brief responsible for synchronizing the frame output with the video's original framerate.
      * 

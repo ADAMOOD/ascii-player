@@ -1,9 +1,10 @@
-#import "core/screenCaptures/MacScreenCapture.h"
+#import "core/overlay/screenCaptures/MacScreenCapture.h"
 #import <CoreGraphics/CoreGraphics.h>
 #include <cstddef>
 
-cv::Mat MacScreenCapture::grabScreen() {
-  auto monitorId = CGMainDisplayID();
+
+cv::Mat MacScreenCapture::grabSingleFrame() {
+    auto monitorId = CGMainDisplayID();
 
 // ignor warnings
 #pragma clang diagnostic push

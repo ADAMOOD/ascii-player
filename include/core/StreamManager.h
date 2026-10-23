@@ -1,17 +1,15 @@
 #pragma once
 #include <string>
-#include <vector>
 #include <queue>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
-#include <memory>
+
 
 #include <opencv2/opencv.hpp>
-#include "strategies/IRenderStrategy.h"
-#include "strategies/ImageUtilities.h"
 
+//TODO make stream manager descendant of BaseFrameProvider
 class StreamManager
 {
 private:

@@ -1,85 +1,76 @@
 /**
  * @file main.cpp
  * @brief
- * * Initializes the user interface, handles the main menu loop, and manages 
+ * * Initializes the user interface, handles the main menu loop, and manages
  * the lifecycle of the AsciiEngine for both video files and webcam input.
  */
 
-#include "core/TerminalEngine.h"
-#include "ui/Tui.h"
 #include "core/ConfigManager.h"
+#include "core/TerminalEngine.h"
+#include "core/overlay/OverlayEngine.h"
+#include "ui/Tui.h"
 #include <iostream>
+#include <opencv2/core/utils/logger.hpp>
 #include <string>
 #include <vector>
-#include <opencv2/core/utils/logger.hpp> 
 
 /**
  * @brief Main execution function.
  * @return int Exit status (0 for success).
  */
-int main()
-{
+int main() {
     // ensure OpenCV logging is disabled to prevent cluttering the terminal output
     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
 
     std::vector<std::string> mainMenu = {
-        "ASCII video convertor",
-        "ASCII Window Overlay",
-        "Options",
-        "[ Exit ]"
+        "ASCII video convertor", "ASCII Window Overlay", "Options", "[ Exit ]"
     };
 
     Tui tui;
-    
+
     // main App loop
-    while (true)
-    {
+    while (true) {
         int choiceIndex = tui.showMenu(mainMenu, "ARTSCII");
 
-        if ((size_t)choiceIndex == mainMenu.size() - 1)
-        {
+        if ((size_t)choiceIndex == mainMenu.size() - 1) {
             std::cout << "Goodbye!\n";
             return 0;
         }
 
-        switch (choiceIndex)
-        {
+        switch (choiceIndex) {
         case 0: // ASCII video convertor
         {
             bool useWebcam = ConfigManager::GetBoolFromSettings("use_webcam");
             TerminalEngine engine;
-            
-            if (!useWebcam)
-            {
+
+            if (!useWebcam) {
                 // video playback from file
                 std::string currentVideo = ConfigManager::loadVideoPath();
-                if (currentVideo.empty())
-                {
+                if (currentVideo.empty()) {
                     // Fallback to file explorer if no valid path is found in settings
                     currentVideo = tui.showFileExplorer("../");
                     ConfigManager::saveVideoPath(currentVideo);
                 }
 
-                if (engine.init(currentVideo))
-                {
+                if (engine.init(currentVideo)) {
                     engine.play();
-                }
-                else
-                {
+                } else {
                     std::cerr << "[ERROR] Failed to start video playback." << std::endl;
                 }
-            }
-            else
-            {
+            } else {
                 // Webcam live rendering
-                if (engine.init())
-                {
+                if (engine.init()) {
                     engine.play();
-                }
-                else
-                {
+                } else {
                     std::cerr << "[ERROR] Failed to start webcam." << std::endl;
                 }
+            }
+            break;
+        }
+        case 1: {
+            OverlayEngine engine;
+            if (engine.init()) {
+                engine.play();
             }
             break;
         }
