@@ -75,16 +75,23 @@ set(SOURCES
 
 add_executable(ASCII-PLAYER ${SOURCES})
 
-target_include_directories(ASCII-PLAYER PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(ASCII-PLAYER PRIVATE 
+    ${CMAKE_SOURCE_DIR}/include
+    ${OpenCV_INCLUDE_DIRS}
+    ${SDL2_INCLUDE_DIRS}
+    ${SDL2_TTF_INCLUDE_DIRS}
+    /opt/homebrew/include
+)
+target_link_directories(ASCII-PLAYER PRIVATE /opt/homebrew/lib)
 
 target_link_libraries(ASCII-PLAYER PRIVATE
     ${OpenCV_LIBS}
     ftxui::component
-    ${SDL2_LIBRARIES}
-    ${SDL2_TTF_LIBRARIES}
+    -lSDL2
+    -lSDL2_ttf
 )
 
-# Exclusive for Apple
+# Exclusive for Apple screen capture
 if(APPLE)
     target_link_libraries(ASCII-PLAYER PRIVATE "-framework CoreGraphics" "-framework CoreFoundation")
 endif()

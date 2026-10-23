@@ -1,8 +1,6 @@
 #pragma once
-#include "core/PerformanceMonitor.h"
 #include "strategies/ImageUtilities.h"
 #include "ui/Property.h"
-#include <chrono>
 #include <vector>
 class DisplayManager {
 
