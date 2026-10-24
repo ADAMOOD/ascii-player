@@ -38,7 +38,14 @@ class CoreEngine {
      * @param newStrategy Name of the new strategy to switch to. The StrategiesFactory will create
      * the appropriate object.
      */
+
     void setStrategy(std::string newStrategy);
+
+    /**
+     * @brief Reads user configuration, initializes the rendering strategy.
+     * @return true if configuration was successfully applied.
+     */
+    bool setupEngineConfigs();
 
     virtual void play() = 0;
     virtual bool init() = 0;

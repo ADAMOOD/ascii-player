@@ -1,12 +1,12 @@
-#include "core/BaseFrameProvider.h"
+#include "core/terminal/ThreadedFrameProducer.h"
 
-void BaseFrameProvider::start()
+
+void ThreadedFrameProducer::start()
 {
     m_isCaptureRunning = true;
-    m_videoProcessingThread = std::thread(&BaseFrameProvider::frameProducerTask, this);
+    m_videoProcessingThread = std::thread(&ThreadedFrameProducer::frameProducerTask, this);
 }
-
-void BaseFrameProvider::stop()
+void ThreadedFrameProducer::stop()
 {
     m_isCaptureRunning = false;
     m_frameReady.notify_one();
@@ -24,25 +24,7 @@ void BaseFrameProvider::stop()
     lock.unlock();
 }
 
-cv::Mat BaseFrameProvider::getNextFrame()
-{
-    cv::Mat frame;
-    std::unique_lock<std::mutex> uniqueLock(m_queueMutex);
-
-    bool gotFrame = m_frameReady.wait_for(uniqueLock, std::chrono::milliseconds(50), [&]
-                                          { return !m_frames.empty() || !m_isCaptureRunning; });
-
-    if (!gotFrame || (!m_isCaptureRunning && m_frames.empty()))
-        return cv::Mat();
-
-    frame = m_frames.front();
-    m_frames.pop();
-    uniqueLock.unlock();
-    m_queueNotFull.notify_one();
-
-    return frame;
-}
-void BaseFrameProvider::frameProducerTask()
+void ThreadedFrameProducer::frameProducerTask()
 {
     while (m_isCaptureRunning)
     {

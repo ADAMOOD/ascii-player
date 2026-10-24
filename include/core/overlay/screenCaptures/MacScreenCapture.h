@@ -1,7 +1,8 @@
 #pragma once
-#include "core/BaseFrameProvider.h"
+#include "core/FrameBufferManager.h"
 
-class MacScreenCapture : public BaseFrameProvider {
+class MacScreenCapture : public FrameBufferManager {
   public:
-       cv::Mat grabSingleFrame() override;
+    void start() override;
+    void stop() override;
 };

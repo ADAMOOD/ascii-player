@@ -2,10 +2,10 @@
 
 #include <memory>
 
-#include "core/BaseFrameProvider.h"
+#include "core/FrameBufferManager.h"
 
 class ScreenCaptureFactory
 {
     public:
-    static std::unique_ptr<BaseFrameProvider> create();
+    static std::unique_ptr<FrameBufferManager> create();
 };

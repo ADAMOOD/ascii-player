@@ -6,7 +6,7 @@
 // #include "core/screenCaptures/WinScreenCapture.h"
 #endif
 
-std::unique_ptr<BaseFrameProvider> ScreenCaptureFactory::create() {
+std::unique_ptr<FrameBufferManager> ScreenCaptureFactory::create() {
 #ifdef __APPLE__
     return std::make_unique<MacScreenCapture>();
 #elif _WIN32

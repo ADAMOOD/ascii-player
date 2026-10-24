@@ -1,8 +1,6 @@
 #include "core/overlay/OverlayEngine.h"
-#include "core/ConfigManager.h"
 #include "core/overlay/screenCaptures/ScreenCaptureFactory.h"
-#include "strategies/EdgeDetections/BaseEdgeDetectionStrategy.h"
-#include "strategies/ImageUtilities.h"
+#include "ui/DebugWindow.h"
 #include <cstddef>
 
 bool OverlayEngine::init() {
@@ -16,32 +14,42 @@ bool OverlayEngine::init() {
         std::cerr << "[ERROR] Unable to initialize window!\n";
         return false;
     }
-    auto strategy = ConfigManager::getValFromSettings("render_strategy");
-    this->setStrategy(strategy);
-    if (auto edgeStrategy = dynamic_cast<BaseEdgeDetectionStrategy *>(m_currentStrategy.get())) {
-        std::string savedChar = ConfigManager::getValFromSettings("fill_char");
-        char fill = savedChar.empty() ? ' ' : savedChar[0];
-        edgeStrategy->setFillChar(fill);
-    }
+
+    setupEngineConfigs();
+    m_debugWindow.init(4.0 / 3.0);
     return true;
 }
 void OverlayEngine::play() {
     m_isEngineRunning = true;
     m_frameProvider->start();
+
     while (m_isEngineRunning) {
         if (!m_windowManager.pollEvents()) {
-
             m_isEngineRunning = false;
             continue;
         }
-        cv::Mat frame = m_frameProvider->getNextFrame();
+
+        cv::Mat frame = m_frameProvider->consumeFrame();
         if (frame.empty())
             continue;
-        int width, height;
-        m_windowManager.getSize(&width, &height);
-        std::vector<ImageUtils::Pixel> frameBuffer_debug_tmp;
-        processFrameToBuffer(frame, frameBuffer_debug_tmp, width, height);
-        m_windowManager.renderBuffer(frameBuffer_debug_tmp, width, height);
+
+        int asciiCols, asciiRows;
+        m_windowManager.calculateGridSize(asciiCols, asciiRows);
+
+        m_windowManager.getBuffer().assign(asciiCols * asciiRows, {' ', {0, 0, 0}, {0, 0, 0}});
+
+        processFrameToBuffer(frame, m_windowManager.getBuffer(), asciiCols, asciiRows);
+
+        m_windowManager.renderBuffer(asciiCols, asciiRows);
+
+        if (m_currentStrategy->getProperty("Show Debug Window") > 0.5f) {
+            m_debugWindow.showDebugWindow(
+                m_currentStrategy->getDebugFrame(), frame, m_currentStrategy->getName()
+            );
+        } else {
+            m_debugWindow.destroy();
+        }
     }
+    m_debugWindow.destroy();
     m_frameProvider->stop();
 }

@@ -42,15 +42,18 @@ set(SOURCES
     src/main.cpp 
 
     src/core/CoreEngine.cpp
-    src/core/TerminalEngine.cpp
+
+    src/core/terminal/TerminalEngine.cpp
+    src/core/terminal/StreamManager.cpp
+    src/core/terminal/ThreadedFrameProducer.cpp
 
     src/core/overlay/OverlayEngine.cpp
     src/core/overlay/WindowManager.cpp
 
 
     src/core/ConfigManager.cpp
-    src/core/BaseFrameProvider.cpp
-    src/core/StreamManager.cpp
+    src/core/FrameBufferManager.cpp
+
     src/core/InputHandler.cpp
     src/core/PerformanceMonitor.cpp
 

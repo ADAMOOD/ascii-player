@@ -1,22 +1,15 @@
-#include "core/TerminalEngine.h"
+#include "core/terminal/TerminalEngine.h"
 #include "core/ConfigManager.h"
-#include "strategies/EdgeDetections/BaseEdgeDetectionStrategy.h"
 #include <iostream>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/utils/logger.hpp>
 
-bool TerminalEngine::setupEngineConfigs() {
-    auto strategy = ConfigManager::getValFromSettings("render_strategy");
-    this->setStrategy(strategy);
-    if (auto edgeStrategy = dynamic_cast<BaseEdgeDetectionStrategy*>(m_currentStrategy.get())) {
-        std::string savedChar = ConfigManager::getValFromSettings("fill_char");
-        char fill = savedChar.empty() ? ' ' : savedChar[0];
-        edgeStrategy->setFillChar(fill);
-    }
 
-    auto config_fpsString = ConfigManager::getValFromSettings("target_fps");
-    m_targetFPS = ConfigManager::is_number(config_fpsString) ? std::stod(config_fpsString) : 0;
-    m_measure_performance = ConfigManager::GetBoolFromSettings("measure_performance");
+bool TerminalEngine::init(const std::string& videoPath) {
+    if (!m_streamManager.init(videoPath)) {
+        std::cerr << "[ERROR] Stream manager ERROR " << std::endl;
+        return false;
+    }
 
     m_menuStartIndex = 0;
     m_selectedPropertyIndex = 0;
@@ -35,14 +28,6 @@ bool TerminalEngine::setupEngineConfigs() {
     m_displayManager.init(aspectRatio);
     m_displayManager.updateTerminalSize();
     m_debugWindow.init(aspectRatio);
-    return true;
-}
-
-bool TerminalEngine::init(const std::string& videoPath) {
-    if (!m_streamManager.init(videoPath)) {
-        std::cerr << "[ERROR] Stream manager ERROR " << std::endl;
-        return false;
-    }
     return setupEngineConfigs();
 }
 
@@ -51,6 +36,23 @@ bool TerminalEngine::init() {
         std::cerr << "[ERROR] Stream manager ERROR " << std::endl;
         return false;
     }
+    m_menuStartIndex = 0;
+    m_selectedPropertyIndex = 0;
+    double origWidth;
+    double origHeight;
+
+    m_streamManager.getOriginalSize(origWidth, origHeight);
+
+    if (origWidth <= 0 || origHeight <= 0) {
+        origWidth = 640;
+        origHeight = 480;
+    }
+
+    double aspectRatio = origWidth / origHeight;
+
+    m_displayManager.init(aspectRatio);
+    m_displayManager.updateTerminalSize();
+    m_debugWindow.init(aspectRatio);
     return setupEngineConfigs();
 }
 
@@ -78,7 +80,7 @@ void TerminalEngine::play() {
         m_Pmonitor.startFrame();
         m_displayManager.updateTerminalSize();
 
-        cv::Mat frame = m_streamManager.getNextFrame();
+        cv::Mat frame = m_streamManager.consumeFrame();
 
         if (frame.empty()) {
             if (!m_isEngineRunning)
@@ -123,7 +125,7 @@ void TerminalEngine::play() {
 
     std::cout << "\x1b[?25h";
 }
-
+//TODO fix fps synchronization - stopped working after refactoring to debug window
 void TerminalEngine::syncFramerate() {
     double orignal_streamFPS = m_streamManager.getStreamFps();
 

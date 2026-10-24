@@ -2,7 +2,6 @@
 #include "strategies/ImageUtilities.h"
 #include "ui/Property.h"
 #include <vector>
-#include "ui/DebugWindow.h"
 class DisplayManager {
 
   private:
@@ -15,13 +14,11 @@ class DisplayManager {
     double m_currentFrameMs = 0.0;
     void printMonitoredStats();
 
-
-
   public:
     double m_avgFrameTimeMs = 0.0;    // Saves average time per frame
     double m_avgTheoreticalFps = 0.0; // saves average FPS
 
-    std::vector<ImageUtils::Pixel> &getBuffer();
+    std::vector<ImageUtils::Pixel>& getBuffer();
     int getWidth() const;
     int getHeight() const;
     /**

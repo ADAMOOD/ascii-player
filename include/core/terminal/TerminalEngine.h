@@ -5,7 +5,7 @@
 
 #include "core/CoreEngine.h"
 #include "core/InputHandler.h"
-#include "core/StreamManager.h"
+#include "core/terminal/StreamManager.h"
 #include "ui/DisplayManager.h"
 
 /**
@@ -48,12 +48,7 @@ class TerminalEngine : public CoreEngine {
      */
     void syncFramerate();
 
-    /**
-     * @brief Reads user configuration, initializes the rendering strategy, and sets up terminal
-     * bounds.
-     * @return true if configuration was successfully applied.
-     */
-    bool setupEngineConfigs();
+
 
     /**
      * @brief Checks for user input without blocking the main thread.

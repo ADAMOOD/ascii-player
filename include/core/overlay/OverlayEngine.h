@@ -4,7 +4,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "core/CoreEngine.h"
-#include "core/BaseFrameProvider.h"
+#include "core/FrameBufferManager.h"
 #include "core/overlay/WindowManager.h"
 
 class OverlayEngine : public CoreEngine {
@@ -13,6 +13,6 @@ public:
   void play() override;
 
 private:
-  std::unique_ptr<BaseFrameProvider> m_frameProvider;
+  std::unique_ptr<FrameBufferManager> m_frameProvider;
   WindowManager m_windowManager;
 };

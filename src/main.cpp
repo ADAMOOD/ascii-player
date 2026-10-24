@@ -6,7 +6,7 @@
  */
 
 #include "core/ConfigManager.h"
-#include "core/TerminalEngine.h"
+#include "core/terminal/TerminalEngine.h"
 #include "core/overlay/OverlayEngine.h"
 #include "ui/Tui.h"
 #include <iostream>
