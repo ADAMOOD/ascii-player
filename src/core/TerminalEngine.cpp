@@ -8,16 +8,15 @@
 bool TerminalEngine::setupEngineConfigs() {
     auto strategy = ConfigManager::getValFromSettings("render_strategy");
     this->setStrategy(strategy);
-    if (auto edgeStrategy = dynamic_cast<BaseEdgeDetectionStrategy *>(m_currentStrategy.get())) {
+    if (auto edgeStrategy = dynamic_cast<BaseEdgeDetectionStrategy*>(m_currentStrategy.get())) {
         std::string savedChar = ConfigManager::getValFromSettings("fill_char");
         char fill = savedChar.empty() ? ' ' : savedChar[0];
         edgeStrategy->setFillChar(fill);
     }
-    
+
     auto config_fpsString = ConfigManager::getValFromSettings("target_fps");
     m_targetFPS = ConfigManager::is_number(config_fpsString) ? std::stod(config_fpsString) : 0;
     m_measure_performance = ConfigManager::GetBoolFromSettings("measure_performance");
-
 
     m_menuStartIndex = 0;
     m_selectedPropertyIndex = 0;
@@ -35,10 +34,11 @@ bool TerminalEngine::setupEngineConfigs() {
 
     m_displayManager.init(aspectRatio);
     m_displayManager.updateTerminalSize();
+    m_debugWindow.init(aspectRatio);
     return true;
 }
 
-bool TerminalEngine::init(const std::string &videoPath) {
+bool TerminalEngine::init(const std::string& videoPath) {
     if (!m_streamManager.init(videoPath)) {
         std::cerr << "[ERROR] Stream manager ERROR " << std::endl;
         return false;
@@ -101,9 +101,11 @@ void TerminalEngine::play() {
         m_displayManager.renderBuffer(useColor, use8Bit, tolerance);
 
         if (m_currentStrategy->getProperty("Show Debug Window") > 0.5f) {
-            m_displayManager.showDebugWindow(
+            m_debugWindow.showDebugWindow(
                 m_currentStrategy->getDebugFrame(), frame, m_currentStrategy->getName()
             );
+        } else {
+            m_debugWindow.destroy();
         }
 
         if (!m_activeProperties.empty() || m_currentStrategy) {

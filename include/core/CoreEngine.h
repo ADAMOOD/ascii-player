@@ -4,7 +4,7 @@
 
 #include <atomic>
 #include <memory>
-
+#include "ui/DebugWindow.h"
 #include "PerformanceMonitor.h"
 #include "strategies/IRenderStrategy.h"
 class CoreEngine {
@@ -23,7 +23,13 @@ class CoreEngine {
     int m_selectedPropertyIndex = 0; ///< Index of the currently highlighted property in the HUD.
     int m_menuStartIndex = 0; ///< Index of the first visible property in the HUD (for scrolling).
 
-    void processFrameToBuffer(const cv::Mat &frame, std::vector<ImageUtils::Pixel> &debug_buffer, int output_width, int output_height);
+    DebugWindow m_debugWindow; ///<Debug window to see what the selected algorithm produced
+    void processFrameToBuffer(
+        const cv::Mat& frame,
+        std::vector<ImageUtils::Pixel>& debug_buffer,
+        int output_width,
+        int output_height
+    );
     /**
      * @brief Set the Strategy object to be used for rendering frames.
      *  using unique_ptr for automatic memory management.

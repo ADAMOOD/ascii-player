@@ -60,6 +60,7 @@ set(SOURCES
     src/ui/Tui.cpp
     src/ui/Property.cpp
     src/ui/DisplayManager.cpp
+    src/ui/DebugWindow.cpp
 
     src/strategies/ImageUtilities.cpp
     src/strategies/StrategiesFactory.cpp

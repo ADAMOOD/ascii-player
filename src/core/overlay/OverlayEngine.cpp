@@ -1,9 +1,9 @@
 #include "core/overlay/OverlayEngine.h"
+#include "core/ConfigManager.h"
 #include "core/overlay/screenCaptures/ScreenCaptureFactory.h"
+#include "strategies/EdgeDetections/BaseEdgeDetectionStrategy.h"
 #include "strategies/ImageUtilities.h"
 #include <cstddef>
-#include "core/ConfigManager.h"
-#include "strategies/EdgeDetections/BaseEdgeDetectionStrategy.h"
 
 bool OverlayEngine::init() {
     m_frameProvider = ScreenCaptureFactory::create();
@@ -29,7 +29,6 @@ void OverlayEngine::play() {
     m_isEngineRunning = true;
     m_frameProvider->start();
     while (m_isEngineRunning) {
-        // 1. Zpracování událostí (jinak okno zamrzne)
         if (!m_windowManager.pollEvents()) {
 
             m_isEngineRunning = false;
@@ -43,13 +42,6 @@ void OverlayEngine::play() {
         std::vector<ImageUtils::Pixel> frameBuffer_debug_tmp;
         processFrameToBuffer(frame, frameBuffer_debug_tmp, width, height);
         m_windowManager.renderBuffer(frameBuffer_debug_tmp, width, height);
-        /*
-                // 4. Odeslání hotového ASCII pole na grafickou kartu
-                m_windowManager.renderBuffer( tvůj buffer a případně barvy );
-
-                // 5. Omezení rychlosti (např. na 60 FPS), ať to Macu nesežere celou baterku
-                syncFramerate();
-                */
     }
     m_frameProvider->stop();
 }

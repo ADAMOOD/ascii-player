@@ -3,6 +3,24 @@ IndentWidth: 4
 TabWidth: 4
 UseTab: Never
 ColumnLimit: 100
+
+
 BinPackArguments: false
 BinPackParameters: false
 AlignAfterOpenBracket: BlockIndent
+
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: Empty
+
+PointerAlignment: Left
+DerivePointerAlignment: false
+
+BreakConstructorInitializers: BeforeComma
+ConstructorInitializerIndentWidth: 4
+
+SortIncludes: CaseSensitive
+
+SpaceBeforeParens: ControlStatements
+SpaceAfterCStyleCast: true

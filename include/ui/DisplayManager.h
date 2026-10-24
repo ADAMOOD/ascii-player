@@ -2,6 +2,7 @@
 #include "strategies/ImageUtilities.h"
 #include "ui/Property.h"
 #include <vector>
+#include "ui/DebugWindow.h"
 class DisplayManager {
 
   private:
@@ -14,13 +15,7 @@ class DisplayManager {
     double m_currentFrameMs = 0.0;
     void printMonitoredStats();
 
-    cv::Mat drawDebugCanvas(
-        const cv::Mat &debugFrame,
-        const cv::Mat &originalFrame,
-        const std::string &currentStrategy,
-        const cv::Rect &winRect
-    );
-    void updateDebugWindowPosition();
+
 
   public:
     double m_avgFrameTimeMs = 0.0;    // Saves average time per frame
@@ -52,10 +47,6 @@ class DisplayManager {
     );
 
     void setStatsData(double fps, double ms);
-
-    void showDebugWindow(
-        const cv::Mat &debugFrame, const cv::Mat &originalFrame, const std::string currentStrategy
-    );
 
     void init(double original_aspectRatio);
 };
