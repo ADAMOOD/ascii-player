@@ -21,6 +21,7 @@ bool OverlayEngine::init() {
 }
 void OverlayEngine::play() {
     m_isEngineRunning = true;
+    SDL_PumpEvents();
     m_frameProvider->start();
 
     while (m_isEngineRunning) {

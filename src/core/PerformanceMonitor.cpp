@@ -1,5 +1,8 @@
 #include "core/PerformanceMonitor.h"
 #include <ctime>
+#include <filesystem>
+#include <iomanip>
+#include <sstream>
 
 PerformanceMonitor::PerformanceMonitor()
 {
@@ -11,9 +14,13 @@ PerformanceMonitor::~PerformanceMonitor()
 {
     if (m_isLogging)
     {
-        m_isLogging = false;
+        {
+            std::lock_guard<std::mutex> lock(m_queueMutex);
+            m_isLogging = false;
+        }
         m_cv.notify_one();
-        m_loggerThread.join();
+        if (m_loggerThread.joinable())
+            m_loggerThread.join();
         if (m_logFile.is_open())
         {
             m_logFile << "---,---,---,---,---,---\n";
@@ -53,6 +60,29 @@ void PerformanceMonitor::initLogging(const std::string p_recordDir, const std::s
 void PerformanceMonitor::startFrame()
 {
     m_frameStart = std::chrono::high_resolution_clock::now();
+}
+
+void PerformanceMonitor::markPresented()
+{
+    const auto now = std::chrono::steady_clock::now();
+
+    // first call only opens window
+    if (m_realWindowStart == std::chrono::steady_clock::time_point{})
+    {
+        m_realWindowStart = now;
+        m_realWindowFrames = 0;
+        return;
+    }
+
+    ++m_realWindowFrames;
+    const double elapsedMs =
+        std::chrono::duration<double, std::milli>(now - m_realWindowStart).count();
+    if (elapsedMs >= 500.0)
+    {
+        m_realFps = m_realWindowFrames * 1000.0 / elapsedMs;
+        m_realWindowStart = now;
+        m_realWindowFrames = 0;
+    }
 }
 
 void PerformanceMonitor::endFrame()
@@ -128,7 +158,7 @@ std::string PerformanceMonitor::record_to_string(PerformanceRecord pr)
 
 void PerformanceMonitor::loggingTask()
 {
-    while (m_isLogging || !m_logQueue.empty())
+    while (true)
     {
         PerformanceRecord recordToSave;
 

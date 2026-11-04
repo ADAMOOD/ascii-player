@@ -1,9 +1,10 @@
 #include "core/terminal/TerminalEngine.h"
 #include "core/ConfigManager.h"
+#include <chrono>
 #include <iostream>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/utils/logger.hpp>
-
+#include <thread>
 
 bool TerminalEngine::init(const std::string& videoPath) {
     if (!m_streamManager.init(videoPath)) {
@@ -28,6 +29,11 @@ bool TerminalEngine::init(const std::string& videoPath) {
     m_displayManager.init(aspectRatio);
     m_displayManager.updateTerminalSize();
     m_debugWindow.init(aspectRatio);
+
+    cv::dnn::Net aiNet = cv::dnn::readNet("../model.onnx");
+    if (aiNet.empty()) {
+        std::cout << "Model loaded";
+    }
     return setupEngineConfigs();
 }
 
@@ -53,6 +59,12 @@ bool TerminalEngine::init() {
     m_displayManager.init(aspectRatio);
     m_displayManager.updateTerminalSize();
     m_debugWindow.init(aspectRatio);
+
+    cv::dnn::Net aiNet = cv::dnn::readNet("../model.onnx");
+    if (aiNet.empty()) {
+        std::cerr << "[MODEL ERROR] Model not loaded properly";
+        return false;
+    }
     return setupEngineConfigs();
 }
 
@@ -60,6 +72,7 @@ void TerminalEngine::play() {
     m_inputHandler.init();
     m_isEngineRunning = true;
     m_streamManager.start();
+    m_nextFrameTime = std::chrono::steady_clock::time_point{};
     std::cout << "\x1b[2J\x1b[?25l";
 
     if (m_measure_performance) {
@@ -73,7 +86,10 @@ void TerminalEngine::play() {
         m_Pmonitor.initLogging("../performance/", strategy, videoStream);
     }
 
-    auto statsLambda = [this](double fps, double ms) { m_displayManager.setStatsData(fps, ms); };
+    // sending real fps tohud
+    auto statsLambda = [this](double /*computeFps*/, double ms) {
+        m_displayManager.setStatsData(m_Pmonitor.getRealFps(), ms);
+    };
     m_Pmonitor.setUpdateCallback(statsLambda);
 
     while (m_isEngineRunning) {
@@ -115,8 +131,9 @@ void TerminalEngine::play() {
                 m_activeProperties, m_selectedPropertyIndex, m_menuStartIndex
             );
         }
-        m_Pmonitor.endFrame();
+        m_Pmonitor.endFrame(); // time of frame procedure
         syncFramerate();
+        m_Pmonitor.markPresented(); // real tempo for synchronisation
         checkUserInput();
     }
 
@@ -125,19 +142,30 @@ void TerminalEngine::play() {
 
     std::cout << "\x1b[?25h";
 }
-//TODO fix fps synchronization - stopped working after refactoring to debug window
 void TerminalEngine::syncFramerate() {
-    double orignal_streamFPS = m_streamManager.getStreamFps();
+    using clock = std::chrono::steady_clock;
 
-    double actualWorkTimeMs = m_Pmonitor.getRawLastFrameTimeMs();
-    double finalTargetFps = orignal_streamFPS;
-    if (m_targetFPS != 0) {
-        finalTargetFps = m_targetFPS;
+    // target fps FPS: config > stream FPS > Webcam (AVFoundation)
+    // returning 0/NaN; 1000.0/0 =  inf -> long
+    double fps = (m_targetFPS > 0) ? m_targetFPS : m_streamManager.getStreamFps();
+    if (!(fps >= 1.0) || fps > 1000.0) {
+        fps = 30.0;
     }
-    double targetFrameTimeMs = 1000.0 / finalTargetFps;
-    long sleepTimeMs = targetFrameTimeMs - actualWorkTimeMs;
-    if (sleepTimeMs > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(sleepTimeMs));
+
+    const auto frameDuration =
+        std::chrono::duration_cast<clock::duration>(std::chrono::duration<double>(1.0 / fps));
+
+    const auto now = clock::now();
+    if (m_nextFrameTime == clock::time_point{}) {
+        m_nextFrameTime = now; // first frame
+    }
+    m_nextFrameTime += frameDuration;
+
+    if (now < m_nextFrameTime) {
+        std::this_thread::sleep_until(m_nextFrameTime);
+    } else if (now - m_nextFrameTime > frameDuration * 5) {
+        // if latency
+        m_nextFrameTime = now;
     }
 }
 

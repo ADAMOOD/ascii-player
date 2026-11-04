@@ -2,6 +2,7 @@
 
 #include "core/FrameBufferManager.h"
 #include <thread>
+#include <opencv2/dnn.hpp>
 
 class ThreadedFrameProducer : public FrameBufferManager {
   private:

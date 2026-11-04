@@ -31,15 +31,15 @@ else()
     # On linux use FetchContent to automatically download and build FTXUI as part of our build process
     include(FetchContent)
     FetchContent_Declare(ftxui
-      GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI
-      GIT_TAG main
+        GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI
+        GIT_TAG main
     )
     FetchContent_MakeAvailable(ftxui)
 endif()
 
-set(SOURCES 
+set(SOURCES
 
-    src/main.cpp 
+    src/main.cpp
 
     src/core/CoreEngine.cpp
 
@@ -79,7 +79,7 @@ set(SOURCES
 
 add_executable(ASCII-PLAYER ${SOURCES})
 
-target_include_directories(ASCII-PLAYER PRIVATE 
+target_include_directories(ASCII-PLAYER PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${OpenCV_INCLUDE_DIRS}
     ${SDL2_INCLUDE_DIRS}
@@ -97,5 +97,9 @@ target_link_libraries(ASCII-PLAYER PRIVATE
 
 # Exclusive for Apple screen capture
 if(APPLE)
-    target_link_libraries(ASCII-PLAYER PRIVATE "-framework CoreGraphics" "-framework CoreFoundation")
+    target_link_libraries(ASCII-PLAYER PRIVATE "-framework CoreGraphics" 
+    "-framework CoreFoundation" 
+    "-framework ScreenCaptureKit"
+    "-framework CoreMedia"
+    "-framework CoreVideo")
 endif()

@@ -38,6 +38,9 @@ public:
     double getFrameTimeMs() const { return m_UI_avgFrameTimeMs; }
     double getTheoreticalFps() const { return m_UI_avgTheoreticalFps; }
 
+    void markPresented();
+    double getRealFps() const { return m_realFps; }
+
     std::string getStatsString() const;
 
     void setUpdateCallback(std::function<void(double, double)> callback) { m_onUpdateCallback = callback; }
@@ -53,8 +56,13 @@ private:
     bool updateUIStats(const double timeSinceLastUpdate);
 
     // for fps synchronization in engine
-    double m_lastRawFrameTimeMs;
-    double m_lastRawFps;
+    double m_lastRawFrameTimeMs = 0.0;
+    double m_lastRawFps = 0.0;
+
+    // real fps
+    std::chrono::steady_clock::time_point m_realWindowStart{};
+    int m_realWindowFrames = 0;
+    double m_realFps = 0.0;
 
     double m_avgFrameTimeMs = 0.0;
     double m_UI_avgFrameTimeMs = 0.0;
@@ -74,7 +82,7 @@ private:
     std::queue<PerformanceRecord> m_logQueue;
     std::mutex m_queueMutex;
     std::condition_variable m_cv;
-    std::atomic<bool> m_isLogging;
+    std::atomic<bool> m_isLogging{false};
     std::thread m_loggerThread;
     void loggingTask();
     void pushRecord(std::chrono::time_point<std::chrono::high_resolution_clock> now);

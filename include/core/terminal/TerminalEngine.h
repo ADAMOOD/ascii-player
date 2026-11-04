@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <string>
 
 #include <opencv2/opencv.hpp>
@@ -48,7 +49,7 @@ class TerminalEngine : public CoreEngine {
      */
     void syncFramerate();
 
-
+    std::chrono::steady_clock::time_point m_nextFrameTime{};
 
     /**
      * @brief Checks for user input without blocking the main thread.

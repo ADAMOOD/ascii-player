@@ -139,12 +139,11 @@ void DebugWindow::showDebugWindow(
     if (debugFrame.empty())
         return;
 
-    cv::namedWindow("Debug", cv::WINDOW_NORMAL);
-
-    m_isWindowOpen = true;
-
-    // debug window always on the top layer
-    cv::setWindowProperty("Debug", cv::WND_PROP_TOPMOST, 1);
+    if (!m_isWindowOpen) {
+        cv::namedWindow("Debug", cv::WINDOW_NORMAL);
+        cv::setWindowProperty("Debug", cv::WND_PROP_TOPMOST, 1);
+        m_isWindowOpen = true;
+    }
     updateDebugWindowPosition();
 
     cv::Rect winRect = cv::getWindowImageRect("Debug");

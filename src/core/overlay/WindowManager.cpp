@@ -1,5 +1,4 @@
 #include "core/overlay/WindowManager.h"
-#include "SDL_thread.h"
 #include <SDL2/SDL_ttf.h>
 #include <SDL_error.h>
 #include <SDL_events.h>
@@ -27,10 +26,12 @@ bool WindowManager::init() {
         return false;
     }
 
-m_window = SDL_CreateWindow(
-        "ASCII Overlay", 
-        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
-        0, 0,//ignoring when fullscreen desktop
+    m_window = SDL_CreateWindow(
+        "ASCII Overlay",
+        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED,
+        0,
+        0, // ignoring when fullscreen desktop
         SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_ALWAYS_ON_TOP
     );
     if (!m_window) {
