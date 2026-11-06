@@ -1,5 +1,6 @@
 #pragma once
 #include <opencv2/opencv.hpp>
+#include <string>
 
 class DebugWindow {
   private:
@@ -17,10 +18,12 @@ class DebugWindow {
     int m_winPosX = -1;
     int m_winPosY = -1;
 
+     std::string m_windowName;
+
   public:
     void destroy();
     DebugWindow() = default;
-    bool init(double source_aspectRatio);
+    bool init(double source_aspectRatio, const std::string& debugWindowName = "Debug");
 
     void showDebugWindow(
         const cv::Mat& debugFrame, const cv::Mat& originalFrame, const std::string currentStrategy

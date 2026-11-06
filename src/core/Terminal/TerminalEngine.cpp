@@ -1,10 +1,13 @@
 #include "core/terminal/TerminalEngine.h"
 #include "core/ConfigManager.h"
 #include <chrono>
+#include <cstdlib>
 #include <iostream>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/utils/logger.hpp>
 #include <thread>
+#include "core/SaliencyModel.h"
+#include "ui/DebugWindow.h"
 
 bool TerminalEngine::init(const std::string& videoPath) {
     if (!m_streamManager.init(videoPath)) {
@@ -69,6 +72,20 @@ bool TerminalEngine::init() {
 }
 
 void TerminalEngine::play() {
+    SaliencyModel model;
+    if(!model.init("../model.onnx"))
+    {
+        std::cerr << "Model not found \n";
+        exit(1);
+    }
+    DebugWindow modelView;
+   if( !modelView.init(1.0 ,"MODEL"))
+   {
+            std::cerr << "unable to init modelView\n";
+        exit(1);
+   }
+    
+
     m_inputHandler.init();
     m_isEngineRunning = true;
     m_streamManager.start();
@@ -122,6 +139,7 @@ void TerminalEngine::play() {
             m_debugWindow.showDebugWindow(
                 m_currentStrategy->getDebugFrame(), frame, m_currentStrategy->getName()
             );
+           modelView.showDebugWindow(model.getSegmentationMask(frame), frame, "saliency");
         } else {
             m_debugWindow.destroy();
         }

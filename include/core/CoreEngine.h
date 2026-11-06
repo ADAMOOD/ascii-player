@@ -2,11 +2,11 @@
 #include <string>
 #include <vector>
 
-#include <atomic>
-#include <memory>
-#include "ui/DebugWindow.h"
 #include "PerformanceMonitor.h"
 #include "strategies/IRenderStrategy.h"
+#include "ui/DebugWindow.h"
+#include <atomic>
+#include <memory>
 class CoreEngine {
 
   protected:
@@ -23,7 +23,7 @@ class CoreEngine {
     int m_selectedPropertyIndex = 0; ///< Index of the currently highlighted property in the HUD.
     int m_menuStartIndex = 0; ///< Index of the first visible property in the HUD (for scrolling).
 
-    DebugWindow m_debugWindow; ///<Debug window to see what the selected algorithm produced
+    DebugWindow m_debugWindow; ///< Debug window to see what the selected algorithm produced
     void processFrameToBuffer(
         const cv::Mat& frame,
         std::vector<ImageUtils::Pixel>& debug_buffer,

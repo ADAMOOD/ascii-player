@@ -50,6 +50,7 @@ set(SOURCES
     src/core/overlay/OverlayEngine.cpp
     src/core/overlay/WindowManager.cpp
 
+    src/core/SaliencyModel.cpp
 
     src/core/ConfigManager.cpp
     src/core/FrameBufferManager.cpp

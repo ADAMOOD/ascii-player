@@ -1,7 +1,8 @@
 #include "ui/DebugWindow.h"
 #include <iostream>
 
-bool DebugWindow::init(double source_aspectRatio) {
+bool DebugWindow::init(double source_aspectRatio, const std::string& debugWindowName ){
+    m_windowName = debugWindowName;
     if (source_aspectRatio >= (double) 9 / 20 && source_aspectRatio <= (double) 32 / 9) {
         m_aspectRatio = source_aspectRatio;
         return true;
@@ -110,10 +111,10 @@ void DebugWindow::updateDebugWindowPosition() {
                 if (targetWinH < 200)
                     targetWinH = 200;
 
-                cv::resizeWindow("Debug", targetWinW, targetWinH);
+                cv::resizeWindow(m_windowName, targetWinW, targetWinH);
                 int targetX = consoleRect.right - targetWinW - 30;
                 int targetY = consoleRect.top + 100;
-                cv::moveWindow("Debug", targetX, targetY);
+                cv::moveWindow(m_windowName, targetX, targetY);
             }
         }
     }
@@ -124,10 +125,10 @@ void DebugWindow::updateDebugWindowPosition() {
         int targetWinW = 350;
         int targetWinH = static_cast<int>((targetWinW / m_aspectRatio) * 2);
 
-        cv::resizeWindow("Debug", targetWinW, targetWinH);
+        cv::resizeWindow(m_windowName, targetWinW, targetWinH);
         m_winPosX = 900;
         m_winPosY = 100;
-        cv::moveWindow("Debug", m_winPosX, m_winPosY);
+        cv::moveWindow(m_windowName, m_winPosX, m_winPosY);
 
         initialized = true;
     }
@@ -140,13 +141,13 @@ void DebugWindow::showDebugWindow(
         return;
 
     if (!m_isWindowOpen) {
-        cv::namedWindow("Debug", cv::WINDOW_NORMAL);
-        cv::setWindowProperty("Debug", cv::WND_PROP_TOPMOST, 1);
+        cv::namedWindow(m_windowName, cv::WINDOW_NORMAL);
+        cv::setWindowProperty(m_windowName, cv::WND_PROP_TOPMOST, 1);
         m_isWindowOpen = true;
     }
     updateDebugWindowPosition();
 
-    cv::Rect winRect = cv::getWindowImageRect("Debug");
+    cv::Rect winRect = cv::getWindowImageRect(m_windowName);
 
 #if defined(__APPLE__) || defined(__linux__)
     if (winRect.width <= 0 || winRect.height <= 0) {
@@ -158,9 +159,9 @@ void DebugWindow::showDebugWindow(
 
     if (winRect.width > 0 && winRect.height > 0) {
         cv::Mat canvas = drawDebugCanvas(debugFrame, originalFrame, currentStrategy, winRect);
-        cv::imshow("Debug", canvas);
+        cv::imshow(m_windowName, canvas);
     } else {
-        cv::imshow("Debug", debugFrame);
+        cv::imshow(m_windowName, debugFrame);
     }
 
     cv::waitKey(1);
@@ -169,7 +170,7 @@ void DebugWindow::destroy() {
     if (m_isWindowOpen) {
         try {
             //TODO still doesnt work getting the position of window
-            cv::Rect winRect = cv::getWindowImageRect("Debug");
+            cv::Rect winRect = cv::getWindowImageRect(m_windowName);
             if (winRect.x >= 0 && winRect.y >= 0) {
                 m_winPosX = winRect.x;
                 m_winPosY = winRect.y - 30; // title barr compensation
@@ -178,7 +179,7 @@ void DebugWindow::destroy() {
             // ignore for now
         }
 
-        cv::destroyWindow("Debug");
+        cv::destroyWindow(m_windowName);
         cv::waitKey(1);
         m_isWindowOpen = false;
     }
