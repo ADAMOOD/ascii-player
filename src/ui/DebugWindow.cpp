@@ -1,8 +1,12 @@
 #include "ui/DebugWindow.h"
 #include <iostream>
 
-bool DebugWindow::init(double source_aspectRatio, const std::string& debugWindowName ){
+bool DebugWindow::init(
+    double source_aspectRatio, const std::string& debugWindowName, int posX, int posY
+) {
     m_windowName = debugWindowName;
+    m_winPosX = posX;
+    m_winPosY = posY;
     if (source_aspectRatio >= (double) 9 / 20 && source_aspectRatio <= (double) 32 / 9) {
         m_aspectRatio = source_aspectRatio;
         return true;
@@ -119,26 +123,28 @@ void DebugWindow::updateDebugWindowPosition() {
         }
     }
 #elif __APPLE__ || __linux__
-    static bool initialized = false;
 
-    if (!initialized) {
+    if (!m_positionInitialized) {
         int targetWinW = 350;
         int targetWinH = static_cast<int>((targetWinW / m_aspectRatio) * 2);
 
         cv::resizeWindow(m_windowName, targetWinW, targetWinH);
-        m_winPosX = 900;
-        m_winPosY = 100;
         cv::moveWindow(m_windowName, m_winPosX, m_winPosY);
 
-        initialized = true;
+        m_positionInitialized = true;
     }
 #endif
 }
 void DebugWindow::showDebugWindow(
     const cv::Mat& debugFrame, const cv::Mat& originalFrame, const std::string currentStrategy
 ) {
-    if (debugFrame.empty())
+    if (debugFrame.empty()) {
+        if (!m_emptyWarned) {
+            std::cerr << "[DEBUG WINDOW '" << m_windowName << "'] empty frame\n";
+            m_emptyWarned = true;
+        }
         return;
+    }
 
     if (!m_isWindowOpen) {
         cv::namedWindow(m_windowName, cv::WINDOW_NORMAL);
@@ -169,7 +175,7 @@ void DebugWindow::showDebugWindow(
 void DebugWindow::destroy() {
     if (m_isWindowOpen) {
         try {
-            //TODO still doesnt work getting the position of window
+            // TODO still doesnt work getting the position of window
             cv::Rect winRect = cv::getWindowImageRect(m_windowName);
             if (winRect.x >= 0 && winRect.y >= 0) {
                 m_winPosX = winRect.x;

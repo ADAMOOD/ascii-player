@@ -14,7 +14,7 @@ if(MSVC)
     add_compile_definitions(NOMINMAX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /O2 /Ot /Oi /fp:fast")
 else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O3")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O0 -g")
 endif()
 
 # On linux, we need to link against pthread for threading support (used by FTXUI and our own threading)

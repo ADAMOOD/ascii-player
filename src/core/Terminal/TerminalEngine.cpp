@@ -1,13 +1,13 @@
 #include "core/terminal/TerminalEngine.h"
 #include "core/ConfigManager.h"
+#include "core/SaliencyModel.h"
+#include "ui/DebugWindow.h"
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/utils/logger.hpp>
 #include <thread>
-#include "core/SaliencyModel.h"
-#include "ui/DebugWindow.h"
 
 bool TerminalEngine::init(const std::string& videoPath) {
     if (!m_streamManager.init(videoPath)) {
@@ -32,11 +32,6 @@ bool TerminalEngine::init(const std::string& videoPath) {
     m_displayManager.init(aspectRatio);
     m_displayManager.updateTerminalSize();
     m_debugWindow.init(aspectRatio);
-
-    cv::dnn::Net aiNet = cv::dnn::readNet("../model.onnx");
-    if (aiNet.empty()) {
-        std::cout << "Model loaded";
-    }
     return setupEngineConfigs();
 }
 
@@ -62,29 +57,26 @@ bool TerminalEngine::init() {
     m_displayManager.init(aspectRatio);
     m_displayManager.updateTerminalSize();
     m_debugWindow.init(aspectRatio);
-
-    cv::dnn::Net aiNet = cv::dnn::readNet("../model.onnx");
-    if (aiNet.empty()) {
-        std::cerr << "[MODEL ERROR] Model not loaded properly";
-        return false;
-    }
     return setupEngineConfigs();
 }
 
 void TerminalEngine::play() {
     SaliencyModel model;
-    if(!model.init("../model.onnx"))
-    {
-        std::cerr << "Model not found \n";
-        exit(1);
+    if (!model.init("../model.onnx")) {
+        std::cerr << "[ERROR] Saliency model not loaded (../model.onnx)\n";
+        return; // exit(1) by přeskočilo úklid a shodilo celou aplikaci včetně menu
     }
+
+    // poměr stran zdroje, ať se obraz v okně modelu neroztahuje (dřív pevně 1.0)
+    double srcW = 0, srcH = 0;
+    m_streamManager.getOriginalSize(srcW, srcH);
+    const double srcAspect = (srcW > 0 && srcH > 0) ? srcW / srcH : 4.0 / 3.0;
+
     DebugWindow modelView;
-   if( !modelView.init(1.0 ,"MODEL"))
-   {
-            std::cerr << "unable to init modelView\n";
-        exit(1);
-   }
-    
+    if (!modelView.init(srcAspect, "MODEL", 520, 100)) {
+        std::cerr << "[ERROR] unable to init model view window\n";
+        return;
+    }
 
     m_inputHandler.init();
     m_isEngineRunning = true;
@@ -139,10 +131,13 @@ void TerminalEngine::play() {
             m_debugWindow.showDebugWindow(
                 m_currentStrategy->getDebugFrame(), frame, m_currentStrategy->getName()
             );
-           modelView.showDebugWindow(model.getSegmentationMask(frame), frame, "saliency");
         } else {
             m_debugWindow.destroy();
         }
+        
+        cv::Mat processedFrame;
+        model.getSegmentationFrame(frame, processedFrame, frame.cols, frame.rows);
+        modelView.showDebugWindow(processedFrame, frame, "saliency");
 
         if (!m_activeProperties.empty() || m_currentStrategy) {
             m_displayManager.renderHUD(
@@ -155,6 +150,8 @@ void TerminalEngine::play() {
         checkUserInput();
     }
 
+    modelView.destroy();
+    m_debugWindow.destroy();
     m_inputHandler.shutdown();
     m_streamManager.stop();
 
