@@ -64,10 +64,9 @@ void TerminalEngine::play() {
     SaliencyModel model;
     if (!model.init("../model.onnx")) {
         std::cerr << "[ERROR] Saliency model not loaded (../model.onnx)\n";
-        return; // exit(1) by přeskočilo úklid a shodilo celou aplikaci včetně menu
+        return;
     }
 
-    // poměr stran zdroje, ať se obraz v okně modelu neroztahuje (dřív pevně 1.0)
     double srcW = 0, srcH = 0;
     m_streamManager.getOriginalSize(srcW, srcH);
     const double srcAspect = (srcW > 0 && srcH > 0) ? srcW / srcH : 4.0 / 3.0;
@@ -113,6 +112,8 @@ void TerminalEngine::play() {
             checkUserInput();
             continue;
         }
+        cv::Mat processedFrame;
+        model.getSegmentationFrame(frame, processedFrame, frame.cols, frame.rows);
 
         processFrameToBuffer(
             frame,
@@ -135,8 +136,6 @@ void TerminalEngine::play() {
             m_debugWindow.destroy();
         }
         
-        cv::Mat processedFrame;
-        model.getSegmentationFrame(frame, processedFrame, frame.cols, frame.rows);
         modelView.showDebugWindow(processedFrame, frame, "saliency");
 
         if (!m_activeProperties.empty() || m_currentStrategy) {
