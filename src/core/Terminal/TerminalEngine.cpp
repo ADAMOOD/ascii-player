@@ -62,7 +62,7 @@ bool TerminalEngine::init() {
 
 void TerminalEngine::play() {
     SaliencyModel model;
-    if (!model.init("../model.onnx")) {
+    if (!model.init("../model_fixed.onnx")) {
         std::cerr << "[ERROR] Saliency model not loaded (../model.onnx)\n";
         return;
     }
