@@ -19,9 +19,16 @@ endif()
 
 # On linux, we need to link against pthread for threading support (used by FTXUI and our own threading)
 find_package(OpenCV REQUIRED)
+find_package(Threads REQUIRED)
 
-find_package(SDL2 REQUIRED)
-find_package(SDL2_ttf REQUIRED)
+if(APPLE)
+    find_package(SDL2 REQUIRED)
+    find_package(SDL2_ttf REQUIRED)
+else()
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(SDL2 REQUIRED sdl2)
+    pkg_check_modules(SDL2_TTF REQUIRED SDL2_ttf)
+endif()
 
 # --- FTXUI ---
 if(WIN32)
@@ -59,7 +66,6 @@ set(SOURCES
     src/core/PerformanceMonitor.cpp
 
     src/core/overlay/screenCaptures/ScreenCaptureFactory.cpp
-    src/core/overlay/screenCaptures/MacScreenCapture.mm
 
     src/ui/Tui.cpp
     src/ui/Property.cpp
@@ -83,7 +89,7 @@ add_executable(ASCII-PLAYER ${SOURCES})
 target_include_directories(ASCII-PLAYER PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${OpenCV_INCLUDE_DIRS}
-    ${SDL2_INCLUDE_DIRS}
+   ${SDL2_INCLUDE_DIRS}
     ${SDL2_TTF_INCLUDE_DIRS}
     /opt/homebrew/include
 )
@@ -94,10 +100,12 @@ target_link_libraries(ASCII-PLAYER PRIVATE
     ftxui::component
     -lSDL2
     -lSDL2_ttf
+Threads::Threads
 )
 
 # Exclusive for Apple screen capture
 if(APPLE)
+target_sources(ASCII-PLAYER PRIVATE src/core/overlay/screenCaptures/MacScreenCapture.mm)
     target_link_libraries(ASCII-PLAYER PRIVATE "-framework CoreGraphics" 
     "-framework CoreFoundation" 
     "-framework ScreenCaptureKit"

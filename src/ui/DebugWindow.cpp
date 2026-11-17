@@ -148,7 +148,9 @@ void DebugWindow::showDebugWindow(
 
     if (!m_isWindowOpen) {
         cv::namedWindow(m_windowName, cv::WINDOW_NORMAL);
-        cv::setWindowProperty(m_windowName, cv::WND_PROP_TOPMOST, 1);
+        #if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 5)
+    cv::setWindowProperty(m_windowName, cv::WND_PROP_TOPMOST, 1);
+#endif
         m_isWindowOpen = true;
     }
     updateDebugWindowPosition();
