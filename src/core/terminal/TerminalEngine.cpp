@@ -62,10 +62,10 @@ bool TerminalEngine::init() {
 
 void TerminalEngine::play() {
     SaliencyModel model;
-/*    if (!model.init("../model_fixed.onnx")) {
-        std::cerr << "[ERROR] Saliency model not loaded (../model_fixed.onnx)\n";
+   if (!model.init("../model.engine")) {
+        std::cerr << "[ERROR] Saliency model not loaded (../model.engine)\n";
         return;
-    }*/
+    }
 
     double srcW = 0, srcH = 0;
     m_streamManager.getOriginalSize(srcW, srcH);
@@ -113,7 +113,7 @@ void TerminalEngine::play() {
             continue;
         }
         cv::Mat processedFrame;
-        //model.getSegmentationFrame(frame, processedFrame, frame.cols, frame.rows);
+        model.getSegmentationFrame(frame, processedFrame, frame.cols, frame.rows);
 
         processFrameToBuffer(
             frame,
@@ -132,11 +132,11 @@ void TerminalEngine::play() {
             m_debugWindow.showDebugWindow(
                 m_currentStrategy->getDebugFrame(), frame, m_currentStrategy->getName()
             );
+            modelView.showDebugWindow(processedFrame, frame, "saliency");
         } else {
             m_debugWindow.destroy();
         }
-        
-       // modelView.showDebugWindow(processedFrame, frame, "saliency");
+
 
         if (!m_activeProperties.empty() || m_currentStrategy) {
             m_displayManager.renderHUD(

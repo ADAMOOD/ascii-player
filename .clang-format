@@ -2,17 +2,19 @@ BasedOnStyle: LLVM
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
-ColumnLimit: 100
+ColumnLimit: 300
 
 
 BinPackArguments: false
 BinPackParameters: false
+AllowAllArgumentsOnNextLine: false
 AlignAfterOpenBracket: BlockIndent
 
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 AllowShortBlocksOnASingleLine: Never
 AllowShortFunctionsOnASingleLine: Empty
+
 
 PointerAlignment: Left
 DerivePointerAlignment: false

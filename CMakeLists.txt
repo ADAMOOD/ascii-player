@@ -103,6 +103,14 @@ target_link_libraries(ASCII-PLAYER PRIVATE
 Threads::Threads
 )
 
+# for Jetson TX2
+if(UNIX AND NOT APPLE)
+    find_package(CUDAToolkit REQUIRED)
+    target_link_libraries(ASCII-PLAYER PRIVATE nvinfer CUDA::cudart)
+    target_compile_definitions(ASCII-PLAYER PRIVATE USE_TENSORRT)
+endif()
+
+
 # Exclusive for Apple screen capture
 if(APPLE)
 target_sources(ASCII-PLAYER PRIVATE src/core/overlay/screenCaptures/MacScreenCapture.mm)

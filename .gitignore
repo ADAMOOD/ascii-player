@@ -4,3 +4,7 @@ studyMaterial/algorithms.md
 all_project_code.txt
 .vscode/
 .cache/
+.idea/
+.DS_Store
+*.engine
+.venv_onnx/
