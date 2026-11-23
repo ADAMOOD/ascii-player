@@ -57,5 +57,5 @@ class TerminalEngine : public CoreEngine {
      * properties based on user input.
      *
      */
-    void checkUserInput();
+    std::optional<Property> checkUserInput();
 };

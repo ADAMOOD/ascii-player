@@ -2,18 +2,24 @@
 
 #include <chrono>
 
+void ThreadedFrameProducer::setSaliencyEnabled(bool enabled) {
+    m_saliencyEnabled.store(enabled);
+}
+
+bool ThreadedFrameProducer::getSaliencyEnabled() {
+    return m_saliencyEnabled.load();
+}
+
 void ThreadedFrameProducer::start() {
     if (m_videoProcessingThread.joinable())
         return;
 
-    if (m_saliencyEnabled) {
 #ifdef USE_TENSORRT
         if (!m_saliencyModel.init("../model.engine")) {
             std::cerr << "[ERROR] Saliency model not loaded (../model.engine)\n";
             return;
         }
 #endif
-    }
 
     m_isCaptureRunning = true;
     m_videoProcessingThread = std::thread(&ThreadedFrameProducer::frameProducerTask, this);

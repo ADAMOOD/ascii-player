@@ -12,14 +12,15 @@ private:
     std::thread m_videoProcessingThread;
     void frameProducerTask();
     SaliencyModel m_saliencyModel;
-    std::atomic<bool> m_saliencyEnabled;
+    std::atomic<bool> m_saliencyEnabled{false};
 
 protected:
     // Descendants have to implement
     virtual cv::Mat grabSingleFrame() = 0;
 
 public:
-
+    void setSaliencyEnabled(bool enabled);
+    bool getSaliencyEnabled();
     void start() override;
     void stop() override;
 };

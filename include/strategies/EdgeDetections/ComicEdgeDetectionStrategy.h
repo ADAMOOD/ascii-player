@@ -15,6 +15,7 @@ class ComicEdgeDetectionStrategy : public AdvancedEdgeDetectionStrategy
 private:
     int m_searchRadius = 2;         ///< Distance to check for line continuity.
     float m_edgeSensitivity = 0.7f; ///< Required ratio of matching neighbors to form a solid line.
+
     std::string m_asciiChars = " .:-=+*#%@";
 
     /**

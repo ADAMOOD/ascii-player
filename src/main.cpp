@@ -23,7 +23,7 @@ int main() {
     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
 
     std::vector<std::string> mainMenu = {
-        "ASCII video convertor", "ASCII Window Overlay", "Options", "[ Exit ]"
+        "ASCII video convertor", "Options", "[ Exit ]"
     };
 
     Tui tui;

@@ -16,6 +16,7 @@ protected:
     bool m_use8BitColor = false;    ///< Toggles 8-bit color mode (256 colors) ON/OFF for faster/wider terminal support.
     float m_colorTolerance = 30.0f; ///< Threshold for grouping similar colors together.
     bool m_show_debug_window = false; ///< flag for debug window
+    bool m_use_saliency_mask = true; ///< flag for debug window
     cv::Mat m_debugFrame;
     std::string m_strategyName;
 

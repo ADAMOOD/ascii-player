@@ -74,6 +74,8 @@ void TerminalEngine::play() {
 
     m_inputHandler.init();
     m_isEngineRunning = true;
+    bool default_useSaliency = m_currentStrategy->getProperty("Use Saliency detection") > 0.5f;
+    m_streamManager.setSaliencyEnabled(default_useSaliency);
     m_streamManager.start();
     m_nextFrameTime = std::chrono::steady_clock::time_point{};
     std::cout << "\x1b[2J\x1b[?25l";
@@ -104,14 +106,17 @@ void TerminalEngine::play() {
         if (frame.empty()) {
             if (!m_isEngineRunning)
                 break;
-            checkUserInput();
+            if (auto prop = checkUserInput(); prop.has_value()) {
+                if (prop->name == "Use Saliency detection") {
+                    m_streamManager.setSaliencyEnabled(prop->currentValue > 0.5);
+                }
+            }
             continue;
         }
-        cv::Mat processedFrame;
-        //model.getSegmentationFrame(frame, processedFrame, frame.cols, frame.rows);
-        /*if (!processedFrame.empty()) {
-            frame = processedFrame;
-        }*/
+
+        if (m_streamManager.getSaliencyEnabled() && !packet.saliencyMask.empty()) {
+            SaliencyModel::applyMask(packet.frame, packet.saliencyMask, frame, m_displayManager.getWidth(), m_displayManager.getHeight(), 0.5f);
+        }
         processFrameToBuffer(
             frame,
             m_displayManager.getBuffer(),
@@ -127,23 +132,31 @@ void TerminalEngine::play() {
 
         if (m_currentStrategy->getProperty("Show Debug Window") > 0.5f) {
             m_debugWindow.showDebugWindow(
-                m_currentStrategy->getDebugFrame(), frame, m_currentStrategy->getName()
+                m_currentStrategy->getDebugFrame(),
+                frame,
+                m_currentStrategy->getName()
             );
-            modelView.showDebugWindow(processedFrame, frame, "saliency");
+            //modelView.showDebugWindow(processedFrame, frame, "saliency");
         } else {
             m_debugWindow.destroy();
         }
 
-
         if (!m_activeProperties.empty() || m_currentStrategy) {
             m_displayManager.renderHUD(
-                m_activeProperties, m_selectedPropertyIndex, m_menuStartIndex
+                m_activeProperties,
+                m_selectedPropertyIndex,
+                m_menuStartIndex
             );
         }
         m_Pmonitor.endFrame(); // time of frame procedure
         syncFramerate();
         m_Pmonitor.markPresented(); // real tempo for synchronisation
-        checkUserInput();
+        if (auto prop = checkUserInput(); prop.has_value()) {
+            if (prop->name == "Use Saliency detection") {
+                m_streamManager.setSaliencyEnabled(prop->currentValue > 0.5);
+            }
+        }
+
     }
 
     modelView.destroy();
@@ -153,6 +166,7 @@ void TerminalEngine::play() {
 
     std::cout << "\x1b[?25h";
 }
+
 void TerminalEngine::syncFramerate() {
     using clock = std::chrono::steady_clock;
 
@@ -180,7 +194,8 @@ void TerminalEngine::syncFramerate() {
     }
 }
 
-void TerminalEngine::checkUserInput() {
+std::optional<Property> TerminalEngine::checkUserInput() {
+
     InputAction action = m_inputHandler.pollInput();
     switch (action) {
     // maybe implemented in future
@@ -207,8 +222,8 @@ void TerminalEngine::checkUserInput() {
     case InputAction::INCREASE_VALUE: {
         if (m_activeProperties.empty())
             break;
-
-        Property prop = m_activeProperties[m_selectedPropertyIndex];
+        Property prop;
+        prop = m_activeProperties[m_selectedPropertyIndex];
         prop.ShiftedValue(action == InputAction::INCREASE_VALUE);
         m_currentStrategy->setProperty(prop);
         m_activeProperties = m_currentStrategy->getProperties();
@@ -218,7 +233,8 @@ void TerminalEngine::checkUserInput() {
         } else if (m_selectedPropertyIndex >= static_cast<int>(m_activeProperties.size())) {
             m_selectedPropertyIndex = static_cast<int>(m_activeProperties.size()) - 1;
         }
-        break;
+        return prop;
     }
     }
+    return std::nullopt;
 }
