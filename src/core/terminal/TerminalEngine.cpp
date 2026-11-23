@@ -61,11 +61,6 @@ bool TerminalEngine::init() {
 }
 
 void TerminalEngine::play() {
-    SaliencyModel model;
-   if (!model.init("../model.engine")) {
-        std::cerr << "[ERROR] Saliency model not loaded (../model.engine)\n";
-        return;
-    }
 
     double srcW = 0, srcH = 0;
     m_streamManager.getOriginalSize(srcW, srcH);
@@ -104,8 +99,8 @@ void TerminalEngine::play() {
         m_Pmonitor.startFrame();
         m_displayManager.updateTerminalSize();
 
-        cv::Mat frame = m_streamManager.consumeFrame();
-
+        FramePacket packet = m_streamManager.consumeFrame();
+        cv::Mat frame = packet.frame;
         if (frame.empty()) {
             if (!m_isEngineRunning)
                 break;
@@ -113,8 +108,10 @@ void TerminalEngine::play() {
             continue;
         }
         cv::Mat processedFrame;
-        model.getSegmentationFrame(frame, processedFrame, frame.cols, frame.rows);
-
+        //model.getSegmentationFrame(frame, processedFrame, frame.cols, frame.rows);
+        /*if (!processedFrame.empty()) {
+            frame = processedFrame;
+        }*/
         processFrameToBuffer(
             frame,
             m_displayManager.getBuffer(),

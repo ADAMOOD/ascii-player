@@ -7,7 +7,7 @@
 
 #include "core/ConfigManager.h"
 #include "core/terminal/TerminalEngine.h"
-#include "core/overlay/OverlayEngine.h"
+
 #include "ui/Tui.h"
 #include <iostream>
 #include <opencv2/core/utils/logger.hpp>
@@ -68,14 +68,6 @@ int main() {
             break;
         }
         case 1: {
-            OverlayEngine engine;
-            if (engine.init()) {
-                engine.play();
-            }
-            break;
-        }
-        case 2: // settings
-        {
             tui.showOptionsMenu();
             break;
         }

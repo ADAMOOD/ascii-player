@@ -30,7 +30,7 @@ void OverlayEngine::play() {
             continue;
         }
 
-        cv::Mat frame = m_frameProvider->consumeFrame();
+        /*cv::Mat frame = m_frameProvider->consumeFrame();
         if (frame.empty())
             continue;
 
@@ -52,5 +52,6 @@ void OverlayEngine::play() {
         }
     }
     m_debugWindow.destroy();
-    m_frameProvider->stop();
+    m_frameProvider->stop();*/
+    }
 }
